@@ -51,7 +51,7 @@ export default function Layout({
       {/* Mobile Top Navbar */}
       <header className="mobile-header" style={styles.mobileHeader}>
         <div style={styles.mobileBrand}>
-          <span style={styles.mobileBrandName}>GLOE Station</span>
+          <span style={styles.mobileBrandName}>GLOBE Station</span>
         </div>
         <button 
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)} 
