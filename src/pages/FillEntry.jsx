@@ -170,6 +170,7 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
       discount: parseFloat(discount) || 0,
       final: collectVal,
       payment,
+      shift: 'Mid-shift fill',
       notes: notes.trim() || null
     };
 
