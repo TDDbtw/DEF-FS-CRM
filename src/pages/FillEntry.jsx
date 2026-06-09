@@ -18,15 +18,7 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
   const [actual, setActual] = useState('');
   const [discount, setDiscount] = useState('');
   const [payment, setPayment] = useState('');
-  const [shift, setShift] = useState('Mid-shift fill');
   const [notes, setNotes] = useState('');
-  
-  // Dynamic Totalizer readings per machine
-  const [totalizers, setTotalizers] = useState({
-    hp: '',
-    cb: '',
-    gulf: ''
-  });
 
   // Autocomplete state
   const [acOpen, setAcOpen] = useState(false);
@@ -155,13 +147,6 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
     setDiscManualEdited(false);
   };
 
-  const handleTotalizerChange = (machineId, val) => {
-    setTotalizers(prev => ({
-      ...prev,
-      [machineId]: val
-    }));
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -185,13 +170,6 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
       discount: parseFloat(discount) || 0,
       final: collectVal,
       payment,
-      shift,
-      // Map totalizers dynamically. Keep only filled values.
-      totalizers: Object.fromEntries(
-        Object.entries(totalizers)
-          .filter(([_, val]) => val !== '')
-          .map(([k, v]) => [k, parseFloat(v)])
-      ),
       notes: notes.trim() || null
     };
 
@@ -218,9 +196,7 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
     setActual('');
     setDiscount('');
     setPayment('');
-    setShift('Mid-shift fill');
     setNotes('');
-    setTotalizers({ hp: '', cb: '', gulf: '' });
     setDiscManualEdited(false);
     clearAutofill();
   };
@@ -493,14 +469,6 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
                 <option value="Credit">Credit</option>
               </select>
             </div>
-            <div className="fg">
-              <label>Shift status</label>
-              <select value={shift} onChange={(e) => setShift(e.target.value)}>
-                <option value="Mid-shift fill">Mid-shift fill</option>
-                <option value="Starting shift">Starting shift</option>
-                <option value="Ending shift">Ending shift</option>
-              </select>
-            </div>
           </div>
 
           <div className="fg" style={{ marginTop: '14px' }}>
@@ -512,26 +480,6 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
               rows={2}
               style={{ width: '100%', padding: '9px 12px', border: '1px solid var(--border-mid)', borderRadius: 'var(--radius)', fontSize: '13px', color: 'var(--text)', outline: 'none', resize: 'vertical', fontFamily: 'inherit' }}
             />
-          </div>
-
-          <div style={{ marginTop: '14px' }}>
-            <div className="section-label" style={{ paddingBottom: '6px', fontSize: '10px' }}>
-              Machine Totalizer Readings (Odometer km)
-            </div>
-            <div className="form-row-3">
-              {Object.values(MACHINES).map((m) => (
-                <div className="fg" key={m.id}>
-                  <label>{m.name} totalizer <span className="opt">(opt)</span></label>
-                  <input
-                    type="number"
-                    value={totalizers[m.id]}
-                    onChange={(e) => handleTotalizerChange(m.id, e.target.value)}
-                    placeholder={`e.g. ${m.id === 'hp' ? '14523' : m.id === 'cb' ? '8901' : '1000'}`}
-                    step="0.01"
-                  />
-                </div>
-              ))}
-            </div>
           </div>
         </div>
 

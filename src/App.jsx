@@ -11,6 +11,7 @@ import FillHistory from './pages/FillHistory';
 import Alerts from './pages/Alerts';
 import Dashboard from './pages/Dashboard';
 import Reports from './pages/Reports';
+import Shifts from './pages/Shifts';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -177,6 +178,8 @@ export default function App() {
         return <Dashboard customers={customers} fills={fills} />;
       case 'reports':
         return <Reports fills={fills} />;
+      case 'shifts':
+        return <Shifts currentUser={currentUser} triggerToast={triggerToast} />;
       default:
         return currentUser?.role === 'office' 
           ? <Dashboard customers={customers} fills={fills} />

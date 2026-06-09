@@ -27,8 +27,10 @@ if (!isMockMode) {
 const MOCK_DB = {
   getCustomers: () => JSON.parse(localStorage.getItem('gloe_customers') || '[]'),
   getFills: () => JSON.parse(localStorage.getItem('gloe_fills') || '[]'),
+  getShiftLogs: () => JSON.parse(localStorage.getItem('gloe_shift_logs') || '[]'),
   saveCustomers: (data) => localStorage.setItem('gloe_customers', JSON.stringify(data)),
   saveFills: (data) => localStorage.setItem('gloe_fills', JSON.stringify(data)),
+  saveShiftLogs: (data) => localStorage.setItem('gloe_shift_logs', JSON.stringify(data)),
 };
 
 // Seed initial mock data if empty
@@ -206,5 +208,38 @@ export const dbAPI = {
       }
       return { data, error };
     }
-  }
+  },
+
+  // Shift logs (individual start/end records)
+  fetchShiftLogs: async () => {
+    if (isMockMode) {
+      return { data: MOCK_DB.getShiftLogs(), error: null };
+    } else {
+      const { data, error } = await supabase
+        .from('shift_logs')
+        .select('*')
+        .order('created_at', { ascending: false });
+      return { data, error };
+    }
+  },
+
+  addShiftLog: async (log) => {
+    if (isMockMode) {
+      const list = MOCK_DB.getShiftLogs();
+      const entry = {
+        id: 'sl_' + Date.now(),
+        ...log,
+        created_at: new Date().toISOString(),
+      };
+      list.unshift(entry);
+      MOCK_DB.saveShiftLogs(list);
+      return { data: [entry], error: null };
+    } else {
+      const { data, error } = await supabase
+        .from('shift_logs')
+        .insert([log])
+        .select();
+      return { data, error };
+    }
+  },
 };

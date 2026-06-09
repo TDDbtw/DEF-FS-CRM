@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Fuel, Users, ClipboardList, Bell, BarChart3, FileText, LogOut, Menu, X } from 'lucide-react';
+import { Fuel, Users, ClipboardList, Bell, BarChart3, FileText, Clock, LogOut, Menu, X } from 'lucide-react';
 import { isMockMode } from '../config/supabase';
 
 export default function Layout({ 
@@ -18,6 +18,7 @@ export default function Layout({
   const menuItems = isOffice
     ? [
         { id: 'reports', label: 'Reports', icon: FileText },
+        { id: 'shifts', label: 'Shifts', icon: Clock },
         { id: 'customers', label: 'Customers', icon: Users },
         { id: 'history', label: 'Fill History', icon: ClipboardList },
         { 
@@ -30,6 +31,7 @@ export default function Layout({
       ]
     : [
         { id: 'fill', label: 'New Fill Entry', icon: Fuel },
+        { id: 'shifts', label: 'Shifts', icon: Clock },
         { id: 'customers', label: 'Customers', icon: Users },
         { id: 'history', label: 'Fill History', icon: ClipboardList },
         { 
