@@ -333,19 +333,30 @@ export default function Customers({ customers, fills, triggerToast, refreshData 
 
             <div className="section-label">Recent Fills</div>
             {custFills.slice(0, 5).map(f => (
-              <div key={f.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid var(--border)', fontSize: '12px' }}>
-                <div>
-                  <div style={{ fontWeight: '500' }}>
-                    {new Date(f.ts).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+              <div key={f.id} style={{ padding: '8px 0', borderBottom: '1px solid var(--border)', fontSize: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div>
+                    <div style={{ fontWeight: '500' }}>
+                      {new Date(f.ts).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </div>
+                    <div style={{ color: 'var(--text-3)' }}>
+                      {f.employee} · {f.payment}
+                      {f.driver && <span> · {f.driver}</span>}
+                      {f.company && <span> · {f.company}</span>}
+                    </div>
                   </div>
-                  <div style={{ color: 'var(--text-3)' }}>{f.employee} · {f.payment}</div>
+                  <div style={{ textAlign: 'right' }}>
+                    <span className={f.machine === 'hp' ? 'pill-hp' : f.machine === 'cb' ? 'pill-cb' : 'pill-warn'}>
+                      {MACHINES[f.machine]?.name || f.machine.toUpperCase()}
+                    </span>
+                    <div style={{ marginTop: '4px', fontFamily: 'var(--mono)' }}>{f.litres}L · ₹{f.final.toLocaleString('en-IN')}</div>
+                  </div>
                 </div>
-                <div style={{ textAlign: 'right' }}>
-                  <span className={f.machine === 'hp' ? 'pill-hp' : f.machine === 'cb' ? 'pill-cb' : 'pill-warn'}>
-                    {MACHINES[f.machine]?.name || f.machine.toUpperCase()}
-                  </span>
-                  <div style={{ marginTop: '4px', fontFamily: 'var(--mono)' }}>{f.litres}L · ₹{f.final.toLocaleString('en-IN')}</div>
-                </div>
+                {f.notes && (
+                  <div style={{ color: 'var(--text-3)', marginTop: '4px', paddingLeft: '2px', fontStyle: 'italic', fontSize: '11px' }}>
+                    “{f.notes}”
+                  </div>
+                )}
               </div>
             ))}
             {custFills.length === 0 && (

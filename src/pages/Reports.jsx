@@ -1,23 +1,38 @@
 import React, { useState, useMemo } from 'react';
 import { MACHINES } from '../config/machines';
-import { Calendar, Filter, Download, TrendingUp, Fuel, Users, CreditCard, DollarSign } from 'lucide-react';
+import { Filter, Download, TrendingUp, Fuel, Users, CreditCard, DollarSign, Sun, Moon } from 'lucide-react';
 
 const machineList = Object.values(MACHINES);
+
+const getShiftType = (ts) => {
+  const h = new Date(ts).getHours();
+  return h >= 9 && h < 21 ? 'morning' : 'night';
+};
+
+const getShiftDay = (ts) => {
+  const d = new Date(ts);
+  if (d.getHours() < 9) d.setDate(d.getDate() - 1);
+  return d.toISOString().split('T')[0];
+};
 
 export default function Reports({ fills }) {
   const today = new Date().toISOString().split('T')[0];
   const [fromDate, setFromDate] = useState(today);
   const [toDate, setToDate] = useState(today);
   const [selectedEmployee, setSelectedEmployee] = useState('all');
+  const [selectedShift, setSelectedShift] = useState('all');
 
   const filtered = useMemo(() => {
     const from = new Date(fromDate);
     const to = new Date(toDate + 'T23:59:59');
     return fills.filter(f => {
       const d = new Date(f.ts);
-      return d >= from && d <= to && (selectedEmployee === 'all' || f.employee === selectedEmployee);
+      if (d < from || d > to) return false;
+      if (selectedEmployee !== 'all' && f.employee !== selectedEmployee) return false;
+      if (selectedShift !== 'all' && getShiftType(f.ts) !== selectedShift) return false;
+      return true;
     });
-  }, [fills, fromDate, toDate, selectedEmployee]);
+  }, [fills, fromDate, toDate, selectedEmployee, selectedShift]);
 
   const employees = useMemo(() => {
     const set = new Set();
@@ -25,7 +40,6 @@ export default function Reports({ fills }) {
     return [...set].sort();
   }, [fills]);
 
-  // Group by employee then machine
   const byEmployee = useMemo(() => {
     const map = {};
     filtered.forEach(f => {
@@ -43,7 +57,6 @@ export default function Reports({ fills }) {
     return map;
   }, [filtered]);
 
-  // Per-employee totals
   const employeeTotals = useMemo(() => {
     const map = {};
     filtered.forEach(f => {
@@ -60,6 +73,42 @@ export default function Reports({ fills }) {
     return map;
   }, [filtered]);
 
+  // Shift grouping: group by shift day (9AM-9AM) then by shift type
+  const shiftDays = useMemo(() => {
+    const days = {};
+    filtered.forEach(f => {
+      const day = getShiftDay(f.ts);
+      const shift = getShiftType(f.ts);
+      if (!days[day]) days[day] = { morning: { count: 0, litres: 0, amount: 0, cash: 0, gpay: 0, credit: 0 }, night: { count: 0, litres: 0, amount: 0, cash: 0, gpay: 0, credit: 0 } };
+      const s = days[day][shift];
+      s.count += 1;
+      s.litres += f.litres || 0;
+      s.amount += f.final || 0;
+      const p = f.payment || '';
+      if (p === 'Cash') s.cash += f.final || 0;
+      else if (p === 'GPay / UPI') s.gpay += f.final || 0;
+      else s.credit += f.final || 0;
+    });
+    return Object.entries(days).sort((a, b) => b[0].localeCompare(a[0]));
+  }, [filtered]);
+
+  // Shift totals across all days
+  const shiftTotals = useMemo(() => {
+    const t = { morning: { count: 0, litres: 0, amount: 0, cash: 0, gpay: 0, credit: 0 }, night: { count: 0, litres: 0, amount: 0, cash: 0, gpay: 0, credit: 0 } };
+    filtered.forEach(f => {
+      const shift = getShiftType(f.ts);
+      const s = t[shift];
+      s.count += 1;
+      s.litres += f.litres || 0;
+      s.amount += f.final || 0;
+      const p = f.payment || '';
+      if (p === 'Cash') s.cash += f.final || 0;
+      else if (p === 'GPay / UPI') s.gpay += f.final || 0;
+      else s.credit += f.final || 0;
+    });
+    return t;
+  }, [filtered]);
+
   const summary = useMemo(() => {
     let litres = 0, amount = 0, count = 0;
     filtered.forEach(f => {
@@ -72,11 +121,12 @@ export default function Reports({ fills }) {
 
   const formatINR = (v) => '₹' + Math.round(v).toLocaleString('en-IN');
   const fmt = (v) => Math.round(v * 100) / 100;
-
   const machineOrder = machineList.map(m => m.id);
+  const sortByMachine = (entries) => entries.sort((a, b) => machineOrder.indexOf(a[0]) - machineOrder.indexOf(b[0]));
 
-  const sortByMachine = (entries) => {
-    return entries.sort((a, b) => machineOrder.indexOf(a[0]) - machineOrder.indexOf(b[0]));
+  const fmtDay = (d) => {
+    const dt = new Date(d + 'T09:00:00');
+    return dt.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
   };
 
   return (
@@ -85,56 +135,177 @@ export default function Reports({ fills }) {
         <TrendingUp size={20} /> Reports
       </h1>
 
+      {/* Filters */}
       <div className="card card-pad" style={{ marginBottom: '16px' }}>
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-          <div className="fg" style={{ minWidth: '150px', flex: 1 }}>
+          <div className="fg" style={{ minWidth: '140px', flex: 1 }}>
             <label style={labelStyle}>From</label>
             <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} style={inputStyle} />
           </div>
-          <div className="fg" style={{ minWidth: '150px', flex: 1 }}>
+          <div className="fg" style={{ minWidth: '140px', flex: 1 }}>
             <label style={labelStyle}>To</label>
             <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} style={inputStyle} />
           </div>
-          <div className="fg" style={{ minWidth: '150px', flex: 1 }}>
+          <div className="fg" style={{ minWidth: '130px', flex: 1 }}>
             <label style={labelStyle}>Employee</label>
             <select value={selectedEmployee} onChange={e => setSelectedEmployee(e.target.value)} style={inputStyle}>
-              <option value="all">All Employees</option>
+              <option value="all">All</option>
               {employees.map(e => <option key={e} value={e}>{e}</option>)}
             </select>
           </div>
-          <button onClick={() => { setFromDate(today); setToDate(today); setSelectedEmployee('all'); }} style={resetBtnStyle}>
+          <div className="fg" style={{ minWidth: '130px', flex: 1 }}>
+            <label style={labelStyle}>Shift</label>
+            <select value={selectedShift} onChange={e => setSelectedShift(e.target.value)} style={inputStyle}>
+              <option value="all">All shifts</option>
+              <option value="morning">Morning (9AM–9PM)</option>
+              <option value="night">Night (9PM–9AM)</option>
+            </select>
+          </div>
+          <button onClick={() => { setFromDate(today); setToDate(today); setSelectedEmployee('all'); setSelectedShift('all'); }} style={resetBtnStyle}>
             <Filter size={14} /> Reset
           </button>
         </div>
       </div>
 
+      {/* Summary */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px', marginBottom: '16px' }}>
         <div className="card card-pad" style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '11px', color: 'var(--text-3)', marginBottom: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-            <Fuel size={12} /> Total Fills
-          </div>
+          <div style={{ fontSize: '11px', color: 'var(--text-3)', marginBottom: '4px' }}><Fuel size={12} style={{ marginRight: 4 }} />Fills</div>
           <div style={{ fontSize: '22px', fontWeight: '600' }}>{summary.count}</div>
         </div>
         <div className="card card-pad" style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '11px', color: 'var(--text-3)', marginBottom: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-            <Fuel size={12} /> Total Litres
-          </div>
+          <div style={{ fontSize: '11px', color: 'var(--text-3)', marginBottom: '4px' }}><Fuel size={12} style={{ marginRight: 4 }} />Litres</div>
           <div style={{ fontSize: '22px', fontWeight: '600' }}>{fmt(summary.litres)}</div>
         </div>
         <div className="card card-pad" style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '11px', color: 'var(--text-3)', marginBottom: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-            <DollarSign size={12} /> Total Revenue
-          </div>
+          <div style={{ fontSize: '11px', color: 'var(--text-3)', marginBottom: '4px' }}><DollarSign size={12} style={{ marginRight: 4 }} />Revenue</div>
           <div style={{ fontSize: '22px', fontWeight: '600' }}>{formatINR(summary.amount)}</div>
         </div>
         <div className="card card-pad" style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '11px', color: 'var(--text-3)', marginBottom: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-            <Users size={12} /> Employees
-          </div>
+          <div style={{ fontSize: '11px', color: 'var(--text-3)', marginBottom: '4px' }}><Users size={12} style={{ marginRight: 4 }} />Employees</div>
           <div style={{ fontSize: '22px', fontWeight: '600' }}>{Object.keys(byEmployee).length}</div>
         </div>
       </div>
 
+      {/* Shift Summary */}
+      <div className="card card-pad" style={{ marginBottom: '16px' }}>
+        <h2 style={{ fontSize: '14px', fontWeight: '600', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <Sun size={16} /> Sales by Shift (9AM–9AM day)
+        </h2>
+        {filtered.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-3)', fontSize: '13px' }}>No transactions</div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={tableStyle}>
+              <thead>
+                <tr>
+                  <th style={thStyle}>Shift</th>
+                  <th style={{ ...thStyle, textAlign: 'right' }}>Fills</th>
+                  <th style={{ ...thStyle, textAlign: 'right' }}>Litres</th>
+                  <th style={{ ...thStyle, textAlign: 'right' }}>Revenue</th>
+                  <th style={{ ...thStyle, textAlign: 'right' }}>Cash</th>
+                  <th style={{ ...thStyle, textAlign: 'right' }}>GPay</th>
+                  <th style={{ ...thStyle, textAlign: 'right' }}>Credit</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[['morning', '☀️ Morning (9AM–9PM)'], ['night', '🌙 Night (9PM–9AM)']].map(([key, label]) => {
+                  const s = shiftTotals[key];
+                  if (s.count === 0) return null;
+                  return (
+                    <tr key={key}>
+                      <td style={{ ...tdStyle, fontWeight: '500' }}>{label}</td>
+                      <td style={{ ...tdStyle, textAlign: 'right' }}>{s.count}</td>
+                      <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'var(--mono)' }}>{fmt(s.litres)}</td>
+                      <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'var(--mono)' }}>{formatINR(s.amount)}</td>
+                      <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'var(--mono)' }}>{formatINR(s.cash)}</td>
+                      <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'var(--mono)' }}>{formatINR(s.gpay)}</td>
+                      <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'var(--mono)' }}>{formatINR(s.credit)}</td>
+                    </tr>
+                  );
+                })}
+                <tr style={{ background: 'var(--bg)' }}>
+                  <td style={{ ...tdStyle, fontWeight: '600' }}>📊 Day Total</td>
+                  <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600' }}>{summary.count}</td>
+                  <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600', fontFamily: 'var(--mono)' }}>{fmt(summary.litres)}</td>
+                  <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600', fontFamily: 'var(--mono)' }}>{formatINR(summary.amount)}</td>
+                  <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600', fontFamily: 'var(--mono)' }}>{formatINR(shiftTotals.morning.cash + shiftTotals.night.cash)}</td>
+                  <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600', fontFamily: 'var(--mono)' }}>{formatINR(shiftTotals.morning.gpay + shiftTotals.night.gpay)}</td>
+                  <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600', fontFamily: 'var(--mono)' }}>{formatINR(shiftTotals.morning.credit + shiftTotals.night.credit)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Shift Day Detail */}
+      {shiftDays.length > 0 && (
+        <div className="card card-pad" style={{ marginBottom: '16px' }}>
+          <h2 style={{ fontSize: '14px', fontWeight: '600', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Sun size={16} /> Shift Day Detail
+          </h2>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={tableStyle}>
+              <thead>
+                <tr>
+                  <th style={thStyle}>Day (9AM–9AM)</th>
+                  <th style={thStyle}>Shift</th>
+                  <th style={{ ...thStyle, textAlign: 'right' }}>Fills</th>
+                  <th style={{ ...thStyle, textAlign: 'right' }}>Litres</th>
+                  <th style={{ ...thStyle, textAlign: 'right' }}>Revenue</th>
+                  <th style={{ ...thStyle, textAlign: 'right' }}>Cash</th>
+                  <th style={{ ...thStyle, textAlign: 'right' }}>GPay</th>
+                </tr>
+              </thead>
+              <tbody>
+                {shiftDays.map(([day, data]) => {
+                  const morning = data.morning;
+                  const night = data.night;
+                  const shifts = [['morning', '☀️ Morning', morning], ['night', '🌙 Night', night]].filter(([,,s]) => s.count > 0);
+                  const dayTotal = {
+                    count: morning.count + night.count,
+                    litres: morning.litres + night.litres,
+                    amount: morning.amount + night.amount,
+                    cash: morning.cash + night.cash,
+                    gpay: morning.gpay + night.gpay,
+                  };
+                  return (
+                    <React.Fragment key={day}>
+                      {shifts.map(([key, label, s], idx) => (
+                        <tr key={day + key}>
+                          {idx === 0 && (
+                            <td rowSpan={shifts.length + 1} style={{ ...tdStyle, fontWeight: '600', verticalAlign: 'top', whiteSpace: 'nowrap' }}>
+                              {fmtDay(day)}
+                            </td>
+                          )}
+                          <td style={tdStyle}>{label}</td>
+                          <td style={{ ...tdStyle, textAlign: 'right' }}>{s.count}</td>
+                          <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'var(--mono)' }}>{fmt(s.litres)}</td>
+                          <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'var(--mono)' }}>{formatINR(s.amount)}</td>
+                          <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'var(--mono)' }}>{formatINR(s.cash)}</td>
+                          <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'var(--mono)' }}>{formatINR(s.gpay)}</td>
+                        </tr>
+                      ))}
+                      <tr style={{ background: 'var(--bg)' }}>
+                        <td style={{ ...tdStyle }}></td>
+                        <td style={{ ...tdStyle, fontWeight: '600', textAlign: 'right', color: 'var(--text-2)' }}>Day total</td>
+                        <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600' }}>{dayTotal.count}</td>
+                        <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600', fontFamily: 'var(--mono)' }}>{fmt(dayTotal.litres)}</td>
+                        <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600', fontFamily: 'var(--mono)' }}>{formatINR(dayTotal.amount)}</td>
+                        <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600', fontFamily: 'var(--mono)' }}>{formatINR(dayTotal.cash)}</td>
+                        <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600', fontFamily: 'var(--mono)' }}>{formatINR(dayTotal.gpay)}</td>
+                      </tr>
+                    </React.Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Sales by Employee & Machine */}
       <div className="card card-pad" style={{ marginBottom: '16px' }}>
         <h2 style={{ fontSize: '14px', fontWeight: '600', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
           <Fuel size={16} /> Sales by Employee & Machine
@@ -173,23 +344,19 @@ export default function Reports({ fills }) {
                                 </div>
                               </td>
                             )}
-                            <td style={tdStyle}>
-                              <span style={{ color: mac?.themeColor || 'inherit', fontWeight: '500' }}>{mac?.name || mid}</span>
-                            </td>
+                            <td style={tdStyle}><span style={{ color: mac?.themeColor || 'inherit', fontWeight: '500' }}>{mac?.name || mid}</span></td>
                             <td style={{ ...tdStyle, textAlign: 'right' }}>{data.count}</td>
                             <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'var(--mono)' }}>{fmt(data.litres)}</td>
                             <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'var(--mono)' }}>{formatINR(data.amount)}</td>
                           </tr>
                         );
                       })}
-                      {machineEntries.length > 0 && (
-                        <tr style={{ background: 'var(--bg)' }}>
-                          <td colSpan={2} style={{ ...tdStyle, fontWeight: '600', textAlign: 'right', color: 'var(--text-2)' }}>Total</td>
-                          <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600' }}>{empTotal?.count || 0}</td>
-                          <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600', fontFamily: 'var(--mono)' }}>{fmt(empTotal?.litres || 0)}</td>
-                          <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600', fontFamily: 'var(--mono)' }}>{formatINR(empTotal?.amount || 0)}</td>
-                        </tr>
-                      )}
+                      <tr style={{ background: 'var(--bg)' }}>
+                        <td colSpan={2} style={{ ...tdStyle, fontWeight: '600', textAlign: 'right', color: 'var(--text-2)' }}>Total</td>
+                        <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600' }}>{empTotal?.count || 0}</td>
+                        <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600', fontFamily: 'var(--mono)' }}>{fmt(empTotal?.litres || 0)}</td>
+                        <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600', fontFamily: 'var(--mono)' }}>{formatINR(empTotal?.amount || 0)}</td>
+                      </tr>
                     </React.Fragment>
                   );
                 })}
@@ -199,11 +366,10 @@ export default function Reports({ fills }) {
         )}
       </div>
 
+      {/* Employee Performance + Payment Collection */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px', marginBottom: '16px' }}>
         <div className="card card-pad">
-          <h2 style={{ fontSize: '14px', fontWeight: '600', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Users size={16} /> Employee Performance
-          </h2>
+          <h2 style={{ fontSize: '14px', fontWeight: '600', marginBottom: '12px' }}><Users size={16} style={{ marginRight: 6 }} />Employee Performance</h2>
           {Object.keys(employeeTotals).length === 0 ? (
             <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-3)', fontSize: '13px' }}>No data</div>
           ) : (
@@ -235,9 +401,7 @@ export default function Reports({ fills }) {
         </div>
 
         <div className="card card-pad">
-          <h2 style={{ fontSize: '14px', fontWeight: '600', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <CreditCard size={16} /> Payment Collection
-          </h2>
+          <h2 style={{ fontSize: '14px', fontWeight: '600', marginBottom: '12px' }}><CreditCard size={16} style={{ marginRight: 6 }} />Payment Collection</h2>
           {Object.keys(employeeTotals).length === 0 ? (
             <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-3)', fontSize: '13px' }}>No data</div>
           ) : (
@@ -269,12 +433,18 @@ export default function Reports({ fills }) {
         </div>
       </div>
 
+      {/* CSV Export */}
       {filtered.length > 0 && (
         <div style={{ textAlign: 'center', marginTop: '8px', marginBottom: '24px' }}>
           <button onClick={() => {
-            const rows = [['Date','Employee','Machine','Vehicle','Litres','Amount','Discount','Final','Payment']];
+            const rows = [['Date','Shift Day','Shift Type','Employee','Machine','Vehicle','Litres','Amount','Discount','Final','Payment']];
             filtered.forEach(f => {
-              rows.push([new Date(f.ts).toLocaleDateString('en-IN'), f.employee, f.machine, f.vehicle, fmt(f.litres), f.actual, f.discount||0, f.final, f.payment]);
+              rows.push([
+                new Date(f.ts).toLocaleDateString('en-IN'),
+                fmtDay(getShiftDay(f.ts)),
+                getShiftType(f.ts) === 'morning' ? 'Morning' : 'Night',
+                f.employee, f.machine, f.vehicle, fmt(f.litres), f.actual, f.discount||0, f.final, f.payment
+              ]);
             });
             const csv = rows.map(r => r.join(',')).join('\n');
             const blob = new Blob([csv], { type: 'text/csv' });
@@ -296,31 +466,9 @@ export default function Reports({ fills }) {
   );
 }
 
-const labelStyle = {
-  fontSize: '11px', fontWeight: '500', color: 'var(--text-2)', marginBottom: '4px', display: 'block',
-};
-
-const inputStyle = {
-  width: '100%', padding: '8px 10px', border: '1px solid var(--border-mid)', borderRadius: 'var(--radius)',
-  fontSize: '13px', color: 'var(--text)', background: 'var(--surface)', outline: 'none',
-};
-
-const resetBtnStyle = {
-  display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '8px 12px',
-  border: '1px solid var(--border-mid)', borderRadius: 'var(--radius)', background: 'var(--surface)',
-  color: 'var(--text-2)', cursor: 'pointer', fontSize: '12px', fontWeight: '500', alignSelf: 'flex-end',
-};
-
-const tableStyle = {
-  width: '100%', borderCollapse: 'collapse', fontSize: '13px',
-};
-
-const thStyle = {
-  textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid var(--border)',
-  fontSize: '11px', fontWeight: '600', color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.04em',
-  whiteSpace: 'nowrap',
-};
-
-const tdStyle = {
-  padding: '8px 10px', borderBottom: '1px solid var(--border)',
-};
+const labelStyle = { fontSize: '11px', fontWeight: '500', color: 'var(--text-2)', marginBottom: '4px', display: 'block' };
+const inputStyle = { width: '100%', padding: '8px 10px', border: '1px solid var(--border-mid)', borderRadius: 'var(--radius)', fontSize: '13px', color: 'var(--text)', background: 'var(--surface)', outline: 'none' };
+const resetBtnStyle = { display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '8px 12px', border: '1px solid var(--border-mid)', borderRadius: 'var(--radius)', background: 'var(--surface)', color: 'var(--text-2)', cursor: 'pointer', fontSize: '12px', fontWeight: '500', alignSelf: 'flex-end' };
+const tableStyle = { width: '100%', borderCollapse: 'collapse', fontSize: '13px' };
+const thStyle = { textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid var(--border)', fontSize: '11px', fontWeight: '600', color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' };
+const tdStyle = { padding: '8px 10px', borderBottom: '1px solid var(--border)' };

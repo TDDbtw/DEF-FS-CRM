@@ -150,6 +150,7 @@ export default function FillHistory({ fills }) {
                   <th>Discount</th>
                   <th>Final Collect</th>
                   <th>Payment</th>
+                  <th>Remarks</th>
                 </tr>
               </thead>
               <tbody id="history-body">
@@ -179,6 +180,9 @@ export default function FillHistory({ fills }) {
                     <td className="mono" style={{ color: 'var(--text-3)' }}>−₹{f.discount || 0}</td>
                     <td className="mono" style={{ fontWeight: '600' }}>₹{(f.final || 0).toLocaleString('en-IN')}</td>
                     <td style={{ fontSize: '12px' }}>{f.payment}</td>
+                    <td style={{ fontSize: '11px', color: 'var(--text-3)', whiteSpace: 'normal', wordBreak: 'break-word', minWidth: '120px' }}>
+                      {f.notes || '—'}
+                    </td>
                   </tr>
                 ))}
               </tbody>
