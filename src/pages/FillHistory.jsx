@@ -143,6 +143,7 @@ export default function FillHistory({ fills }) {
                   <th>Employee</th>
                   <th>Machine</th>
                   <th>Driver</th>
+                  <th>Phone</th>
                   <th>Vehicle</th>
                   <th>Company</th>
                   <th>Litres</th>
@@ -173,6 +174,7 @@ export default function FillHistory({ fills }) {
                       </span>
                     </td>
                     <td>{f.driver}</td>
+                    <td style={{ fontSize: '11px', fontFamily: 'var(--mono)', color: 'var(--text-2)' }}>{f.driver_ph || '—'}</td>
                     <td className="mono" style={{ fontSize: '11px', fontWeight: '600' }}>{f.vehicle}</td>
                     <td style={{ color: 'var(--text-2)' }}>{f.company || '—'}</td>
                     <td className="mono">{f.litres}L</td>

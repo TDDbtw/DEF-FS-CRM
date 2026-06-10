@@ -27,7 +27,8 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
   const [autofilledFields, setAutofilledFields] = useState({}); // tracking which fields were autofilled
   const acRef = useRef(null);
 
-  // Manual discount tracker
+  // Manual edit trackers
+  const [actualManualEdited, setActualManualEdited] = useState(false);
   const [discManualEdited, setDiscManualEdited] = useState(false);
 
   // Close autocomplete on click outside
@@ -48,7 +49,7 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
   // Auto calculate actual amount (GST-inclusive) and discount if needed
   useEffect(() => {
     if (L > 0) {
-      if (!actual) {
+      if (!actualManualEdited) {
         setActual(Math.round(L * currentMachine.rate).toString());
       }
       if (!discManualEdited) {
@@ -129,6 +130,13 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
     setAutofilledFields({});
   };
 
+  const handleActualChange = (val) => {
+    setActual(val);
+    const numActual = parseFloat(val) || 0;
+    const expected = L > 0 ? Math.round(L * currentMachine.rate) : 0;
+    setActualManualEdited(numActual !== expected);
+  };
+
   const handleDiscChange = (val) => {
     setDiscount(val);
     const numDisc = parseFloat(val) || 0;
@@ -199,6 +207,7 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
     setPayment('');
     setNotes('');
     setDiscManualEdited(false);
+    setActualManualEdited(false);
     clearAutofill();
   };
 
@@ -386,7 +395,7 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
                 <input
                   type="number"
                   value={actual}
-                  onChange={(e) => setActual(e.target.value)}
+                  onChange={(e) => handleActualChange(e.target.value)}
                   placeholder="₹ 0"
                 />
               </div>
