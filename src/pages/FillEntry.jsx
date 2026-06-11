@@ -18,6 +18,8 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
   const [actual, setActual] = useState('');
   const [discount, setDiscount] = useState('');
   const [payment, setPayment] = useState('');
+  const [splitCash, setSplitCash] = useState('');
+  const [splitGpay, setSplitGpay] = useState('');
   const [notes, setNotes] = useState('');
 
   // Autocomplete state
@@ -61,6 +63,17 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
       }
     }
   }, [litres, selectedMachine]);
+
+  // Sync split fields when actual changes for split payment types
+  useEffect(() => {
+    if (payment === 'GPay + Cash Discount') {
+      setSplitGpay(actual || '0');
+    } else if (payment === 'Cash + GPay' && (!splitCash && !splitGpay)) {
+      const half = Math.round(collectVal / 2 * 100) / 100;
+      setSplitCash(half.toString());
+      setSplitGpay((collectVal - half).toString());
+    }
+  }, [payment, actual]);
 
   // Derive GST breakdown from the actual amount
   const actualVal = parseFloat(actual) || 0;
@@ -163,6 +176,23 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
       return;
     }
 
+    if (payment === 'Cash + GPay') {
+      const c = parseFloat(splitCash) || 0;
+      const g = parseFloat(splitGpay) || 0;
+      if (Math.abs(c + g - collectVal) > 0.01) {
+        triggerToast('Cash + GPay amounts must equal the collect amount', 'warn');
+        return;
+      }
+    }
+
+    if (payment === 'GPay + Cash Discount') {
+      const c = parseFloat(splitCash) || 0;
+      if (c > actualVal) {
+        triggerToast('Cash discount cannot exceed the actual amount', 'warn');
+        return;
+      }
+    }
+
     const payload = {
       employee: currentUser?.name || 'Unknown',
       machine: selectedMachine,
@@ -178,6 +208,8 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
       discount: parseFloat(discount) || 0,
       final: collectVal,
       payment,
+      split_cash: payment === 'Cash + GPay' || payment === 'GPay + Cash Discount' ? (parseFloat(splitCash) || 0) : null,
+      split_gpay: payment === 'Cash + GPay' ? (parseFloat(splitGpay) || 0) : payment === 'GPay + Cash Discount' ? actualVal : null,
       shift: 'Mid-shift fill',
       notes: notes.trim() || null
     };
@@ -205,6 +237,8 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
     setActual('');
     setDiscount('');
     setPayment('');
+    setSplitCash('');
+    setSplitGpay('');
     setNotes('');
     setDiscManualEdited(false);
     setActualManualEdited(false);
@@ -470,16 +504,91 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
         <div className="card card-pad" style={{ marginBottom: '14px' }}>
           <div className="section-label">Payment & Shift Status</div>
           <div className="form-row">
-            <div className="fg">
+            <div className="fg" style={{ flex: 1 }}>
               <label>Payment method <span className="req">*</span></label>
-              <select value={payment} onChange={(e) => setPayment(e.target.value)}>
+              <select value={payment} onChange={(e) => {
+                setPayment(e.target.value);
+                if (e.target.value === 'Cash + GPay') {
+                  const half = Math.round(collectVal / 2 * 100) / 100;
+                  setSplitCash(half.toString());
+                  setSplitGpay((collectVal - half).toString());
+                } else if (e.target.value === 'GPay + Cash Discount') {
+                  setSplitGpay(actual || '0');
+                  setSplitCash(discount || '0');
+                } else {
+                  setSplitCash('');
+                  setSplitGpay('');
+                }
+              }}>
                 <option value="">Select payment method</option>
                 <option value="Cash">Cash</option>
                 <option value="GPay / UPI">GPay / UPI</option>
+                <option value="Cash + GPay">Cash + GPay</option>
+                <option value="GPay + Cash Discount">GPay + Cash Discount</option>
                 <option value="Credit">Credit</option>
               </select>
             </div>
           </div>
+
+          {payment === 'Cash + GPay' && (
+            <div className="form-row" style={{ marginTop: '10px' }}>
+              <div className="fg">
+                <label>Cash amount ₹</label>
+                <input
+                  type="number"
+                  value={splitCash}
+                  onChange={(e) => {
+                    const c = parseFloat(e.target.value) || 0;
+                    const remaining = Math.max(0, collectVal - c);
+                    setSplitCash(e.target.value);
+                    setSplitGpay(remaining > 0 ? remaining.toString() : '0');
+                  }}
+                  placeholder="₹ 0"
+                  step="0.01"
+                />
+              </div>
+              <div className="fg">
+                <label>GPay amount ₹</label>
+                <input
+                  type="number"
+                  value={splitGpay}
+                  onChange={(e) => {
+                    const g = parseFloat(e.target.value) || 0;
+                    const remaining = Math.max(0, collectVal - g);
+                    setSplitGpay(e.target.value);
+                    setSplitCash(remaining > 0 ? remaining.toString() : '0');
+                  }}
+                  placeholder="₹ 0"
+                  step="0.01"
+                />
+              </div>
+            </div>
+          )}
+
+          {payment === 'GPay + Cash Discount' && (
+            <div className="form-row" style={{ marginTop: '10px' }}>
+              <div className="fg">
+                <label>GPay received (full) ₹</label>
+                <input
+                  type="number"
+                  value={actual || '0'}
+                  disabled
+                  style={{ background: 'var(--bg)', color: 'var(--text-2)', cursor: 'not-allowed' }}
+                  placeholder="₹ 0"
+                />
+              </div>
+              <div className="fg">
+                <label>Cash discount given ₹</label>
+                <input
+                  type="number"
+                  value={splitCash}
+                  onChange={(e) => setSplitCash(e.target.value)}
+                  placeholder="₹ 0"
+                  step="0.01"
+                />
+              </div>
+            </div>
+          )}
 
           <div className="fg" style={{ marginTop: '14px' }}>
             <label>Remarks / Notes <span className="opt">(opt)</span></label>

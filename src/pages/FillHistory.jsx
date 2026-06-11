@@ -43,6 +43,8 @@ export default function FillHistory({ fills }) {
       'Discount',
       'Final Collect',
       'Payment',
+      'Split Cash',
+      'Split GPay',
       'Shift',
       'Totalizer Readings',
       'Remarks'
@@ -69,6 +71,8 @@ export default function FillHistory({ fills }) {
         f.discount,
         f.final,
         f.payment,
+        f.split_cash || '',
+        f.split_gpay || '',
         f.shift,
         tots,
         f.notes || ''
@@ -181,7 +185,13 @@ export default function FillHistory({ fills }) {
                     <td className="mono">₹{(f.actual || 0).toLocaleString('en-IN')}</td>
                     <td className="mono" style={{ color: 'var(--text-3)' }}>−₹{f.discount || 0}</td>
                     <td className="mono" style={{ fontWeight: '600' }}>₹{(f.final || 0).toLocaleString('en-IN')}</td>
-                    <td style={{ fontSize: '12px' }}>{f.payment}</td>
+                    <td style={{ fontSize: '12px' }}>
+                      {f.payment === 'Cash + GPay'
+                        ? `Cash ₹${(f.split_cash || 0).toLocaleString('en-IN')} + GPay ₹${(f.split_gpay || 0).toLocaleString('en-IN')}`
+                        : f.payment === 'GPay + Cash Discount'
+                        ? `GPay ₹${(f.split_gpay || 0).toLocaleString('en-IN')} (cash −₹${(f.split_cash || 0).toLocaleString('en-IN')})`
+                        : f.payment}
+                    </td>
                     <td style={{ fontSize: '11px', color: 'var(--text-3)', whiteSpace: 'normal', wordBreak: 'break-word', minWidth: '120px' }}>
                       {f.notes || '—'}
                     </td>

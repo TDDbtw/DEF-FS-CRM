@@ -50,7 +50,13 @@ export default function Reports({ fills }) {
       e.amount += f.final || 0;
       e.count += 1;
       const p = f.payment || '';
-      if (p === 'Cash') e.cash += f.final || 0;
+      if (p === 'Cash + GPay') {
+        e.cash += f.split_cash || 0;
+        e.gpay += f.split_gpay || 0;
+      } else if (p === 'GPay + Cash Discount') {
+        e.gpay += f.split_gpay || 0;
+        e.cash -= f.split_cash || 0;
+      } else if (p === 'Cash') e.cash += f.final || 0;
       else if (p === 'GPay / UPI') e.gpay += f.final || 0;
       else e.credit += f.final || 0;
     });
@@ -66,7 +72,13 @@ export default function Reports({ fills }) {
       e.amount += f.final || 0;
       e.count += 1;
       const p = f.payment || '';
-      if (p === 'Cash') e.cash += f.final || 0;
+      if (p === 'Cash + GPay') {
+        e.cash += f.split_cash || 0;
+        e.gpay += f.split_gpay || 0;
+      } else if (p === 'GPay + Cash Discount') {
+        e.gpay += f.split_gpay || 0;
+        e.cash -= f.split_cash || 0;
+      } else if (p === 'Cash') e.cash += f.final || 0;
       else if (p === 'GPay / UPI') e.gpay += f.final || 0;
       else e.credit += f.final || 0;
     });
@@ -85,7 +97,13 @@ export default function Reports({ fills }) {
       s.litres += f.litres || 0;
       s.amount += f.final || 0;
       const p = f.payment || '';
-      if (p === 'Cash') s.cash += f.final || 0;
+      if (p === 'Cash + GPay') {
+        s.cash += f.split_cash || 0;
+        s.gpay += f.split_gpay || 0;
+      } else if (p === 'GPay + Cash Discount') {
+        s.gpay += f.split_gpay || 0;
+        s.cash -= f.split_cash || 0;
+      } else if (p === 'Cash') s.cash += f.final || 0;
       else if (p === 'GPay / UPI') s.gpay += f.final || 0;
       else s.credit += f.final || 0;
     });
@@ -102,7 +120,13 @@ export default function Reports({ fills }) {
       s.litres += f.litres || 0;
       s.amount += f.final || 0;
       const p = f.payment || '';
-      if (p === 'Cash') s.cash += f.final || 0;
+      if (p === 'Cash + GPay') {
+        s.cash += f.split_cash || 0;
+        s.gpay += f.split_gpay || 0;
+      } else if (p === 'GPay + Cash Discount') {
+        s.gpay += f.split_gpay || 0;
+        s.cash -= f.split_cash || 0;
+      } else if (p === 'Cash') s.cash += f.final || 0;
       else if (p === 'GPay / UPI') s.gpay += f.final || 0;
       else s.credit += f.final || 0;
     });
@@ -437,13 +461,13 @@ export default function Reports({ fills }) {
       {filtered.length > 0 && (
         <div style={{ textAlign: 'center', marginTop: '8px', marginBottom: '24px' }}>
           <button onClick={() => {
-            const rows = [['Date','Shift Day','Shift Type','Employee','Machine','Vehicle','Litres','Amount','Discount','Final','Payment']];
+            const rows = [['Date','Shift Day','Shift Type','Employee','Machine','Vehicle','Litres','Amount','Discount','Final','Payment','Split Cash','Split GPay']];
             filtered.forEach(f => {
               rows.push([
                 new Date(f.ts).toLocaleDateString('en-IN'),
                 fmtDay(getShiftDay(f.ts)),
                 getShiftType(f.ts) === 'morning' ? 'Morning' : 'Night',
-                f.employee, f.machine, f.vehicle, fmt(f.litres), f.actual, f.discount||0, f.final, f.payment
+                f.employee, f.machine, f.vehicle, fmt(f.litres), f.actual, f.discount||0, f.final, f.payment, f.split_cash||0, f.split_gpay||0
               ]);
             });
             const csv = rows.map(r => r.join(',')).join('\n');
