@@ -5,6 +5,10 @@ import { MACHINES } from '../config/machines';
 export default function FillHistory({ fills }) {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [selectedMachine, setSelectedMachine] = useState('all');
+  const [selectedEmployee, setSelectedEmployee] = useState('all');
+
+  const employees = [...new Set(fills.map(f => f.employee))].sort();
 
   const sortedFills = [...fills].sort((a, b) => new Date(b.ts) - new Date(a.ts));
 
@@ -16,85 +20,95 @@ export default function FillHistory({ fills }) {
       end.setHours(23, 59, 59, 999);
       if (d > end) return false;
     }
+    if (selectedMachine !== 'all' && f.machine !== selectedMachine) return false;
+    if (selectedEmployee !== 'all' && f.employee !== selectedEmployee) return false;
     return true;
   });
 
-  const clearDates = () => {
+  const clearFilters = () => {
     setDateFrom('');
     setDateTo('');
+    setSelectedMachine('all');
+    setSelectedEmployee('all');
   };
 
   const exportCSV = () => {
     if (filteredFills.length === 0) return;
-    
-    const headers = [
-      'Timestamp',
-      'Employee',
-      'Machine',
-      'Vehicle',
-      'Driver',
-      'Driver Phone',
-      'Company',
-      'Company Phone',
-      'Odometer',
-      'State',
-      'Litres',
-      'Actual',
-      'Discount',
-      'Final Collect',
-      'Payment',
-      'Split Cash',
-      'Split GPay',
-      'Shift',
-      'Totalizer Readings',
-      'Remarks'
-    ];
 
-    const rows = filteredFills.map(f => {
-      const tots = Object.entries(f.totalizers || {})
-        .map(([k, v]) => `${k.toUpperCase()}:${v}`)
-        .join(' | ');
-
-      return [
-        new Date(f.ts).toLocaleString('en-IN'),
-        f.employee,
-        MACHINES[f.machine]?.name || f.machine.toUpperCase(),
-        f.vehicle,
-        f.driver,
-        f.driver_ph || '',
-        f.company || '',
-        f.co_ph || '',
-        f.odo || '',
-        f.state,
-        f.litres,
-        f.actual,
-        f.discount,
-        f.final,
-        f.payment,
-        f.split_cash || '',
-        f.split_gpay || '',
-        f.shift,
-        tots,
-        f.notes || ''
+    try {
+      const headers = [
+        'Timestamp',
+        'Employee',
+        'Machine',
+        'Vehicle',
+        'Driver',
+        'Driver Phone',
+        'Company',
+        'Company Phone',
+        'Odometer',
+        'State',
+        'Litres',
+        'Actual',
+        'Discount',
+        'Final Collect',
+        'Payment',
+        'Split Cash',
+        'Split GPay',
+        'Shift',
+        'Totalizer Readings',
+        'Remarks'
       ];
-    });
 
-    const csvContent = [
-      headers.map(h => `"${h}"`).join(','),
-      ...rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
-    ].join('\n');
+      const rows = filteredFills.map(f => {
+        const tots = Object.entries(f.totalizers || {})
+          .map(([k, v]) => `${k.toUpperCase()}:${v}`)
+          .join(' | ');
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    const from = dateFrom || 'start';
-    const to = dateTo || 'end';
-    link.setAttribute('href', url);
-    link.setAttribute('download', `fills_${from}_to_${to}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+        return [
+          new Date(f.ts).toLocaleString('en-IN'),
+          f.employee,
+          MACHINES[f.machine]?.name || f.machine.toUpperCase(),
+          f.vehicle,
+          f.driver,
+          f.driver_ph || '',
+          f.company || '',
+          f.co_ph || '',
+          f.odo || '',
+          f.state,
+          f.litres,
+          f.actual,
+          f.discount,
+          f.final,
+          f.payment,
+          f.split_cash || '',
+          f.split_gpay || '',
+          f.shift,
+          tots,
+          f.notes || ''
+        ];
+      });
+
+      const csvContent = '\uFEFF' + [
+        headers.map(h => `"${h}"`).join(','),
+        ...rows.map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','))
+      ].join('\n');
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const from = dateFrom || 'start';
+      const to = dateTo || 'end';
+      const mach = selectedMachine !== 'all' ? `_${selectedMachine}` : '';
+      const emp = selectedEmployee !== 'all' ? `_${selectedEmployee.replace(/\s+/g, '_')}` : '';
+      link.href = url;
+      link.download = `fills${mach}${emp}_${from}_to_${to}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('CSV export failed:', err);
+    }
   };
 
   return (
@@ -122,8 +136,22 @@ export default function FillHistory({ fills }) {
           <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={{ fontSize: '12px', padding: '4px 8px', border: '1px solid var(--border-mid)', borderRadius: 'var(--radius)', background: 'var(--surface)', color: 'var(--text)' }} />
           <label style={{ fontSize: '12px', color: 'var(--text-3)' }}>To:</label>
           <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={{ fontSize: '12px', padding: '4px 8px', border: '1px solid var(--border-mid)', borderRadius: 'var(--radius)', background: 'var(--surface)', color: 'var(--text)' }} />
-          {(dateFrom || dateTo) && (
-            <button className="btn btn-outline btn-sm" onClick={clearDates} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', padding: '4px 8px' }}>
+          <label style={{ fontSize: '12px', color: 'var(--text-3)' }}>Machine:</label>
+          <select value={selectedMachine} onChange={e => setSelectedMachine(e.target.value)} style={{ fontSize: '12px', padding: '4px 8px', border: '1px solid var(--border-mid)', borderRadius: 'var(--radius)', background: 'var(--surface)', color: 'var(--text)' }}>
+            <option value="all">All</option>
+            {Object.values(MACHINES).map(m => (
+              <option key={m.id} value={m.id}>{m.name}</option>
+            ))}
+          </select>
+          <label style={{ fontSize: '12px', color: 'var(--text-3)' }}>Employee:</label>
+          <select value={selectedEmployee} onChange={e => setSelectedEmployee(e.target.value)} style={{ fontSize: '12px', padding: '4px 8px', border: '1px solid var(--border-mid)', borderRadius: 'var(--radius)', background: 'var(--surface)', color: 'var(--text)' }}>
+            <option value="all">All</option>
+            {employees.map(emp => (
+              <option key={emp} value={emp}>{emp}</option>
+            ))}
+          </select>
+          {(dateFrom || dateTo || selectedMachine !== 'all' || selectedEmployee !== 'all') && (
+            <button className="btn btn-outline btn-sm" onClick={clearFilters} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', padding: '4px 8px' }}>
               <X size={12} /> Clear
             </button>
           )}
