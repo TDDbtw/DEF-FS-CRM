@@ -52,24 +52,27 @@ export default function Shifts({ currentUser, triggerToast }) {
     return diff;
   };
 
-  // Pair start/end logs by employee per day
+  // Pair start/end logs by employee — match each start with the next end
   const paired = [];
-  const seen = new Set();
-  logs.forEach((log, i) => {
-    if (seen.has(log.id)) return;
+  const used = new Set();
+  const sorted = [...logs].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+
+  sorted.forEach((log, i) => {
+    if (used.has(log.id)) return;
     if (log.type === 'start') {
-      const end = logs.slice(i + 1).find(l =>
-        l.employee_name === log.employee_name && l.type === 'end' &&
-        new Date(l.created_at).toDateString() === new Date(log.created_at).toDateString()
+      const end = sorted.slice(i + 1).find(l =>
+        l.employee_name === log.employee_name && l.type === 'end' && !used.has(l.id)
       );
       paired.push({ start: log, end: end || null });
-      seen.add(log.id);
-      if (end) seen.add(end.id);
-    } else if (!seen.has(log.id)) {
+      used.add(log.id);
+      if (end) used.add(end.id);
+    } else if (!used.has(log.id)) {
       paired.push({ start: null, end: log });
-      seen.add(log.id);
+      used.add(log.id);
     }
   });
+
+  paired.reverse(); // most recent first
 
   const fmt = (iso) => {
     const d = new Date(iso);
@@ -152,23 +155,31 @@ export default function Shifts({ currentUser, triggerToast }) {
       {!loading && paired.map((pair, i) => {
         const ref = pair.start || pair.end;
         const diff = shiftDiff(pair.start, pair.end);
+        const complete = pair.start && pair.end;
         return (
           <div key={i} className="card card-pad" style={{ marginBottom: '10px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
               <div>
                 <span style={{ fontWeight: '600', fontSize: '14px' }}>{ref.employee_name}</span>
-                <span style={{ fontSize: '12px', color: 'var(--text-3)', marginLeft: '8px' }}>
+                <span style={{ fontSize: '11px', color: 'var(--text-3)', marginLeft: '8px' }}>
                   {fmtDate(ref.created_at)}
                 </span>
               </div>
               <span style={{
                 padding: '2px 8px', borderRadius: '20px', fontSize: '11px', fontWeight: '500',
-                background: pair.end ? 'var(--ok-soft)' : 'var(--warn-soft)',
-                color: pair.end ? 'var(--ok)' : 'var(--warn)',
+                background: complete ? 'var(--ok-soft)' : pair.start ? 'var(--warn-soft)' : 'var(--hp-soft)',
+                color: complete ? 'var(--ok)' : pair.start ? 'var(--warn)' : 'var(--text-3)',
               }}>
-                {pair.end ? 'Complete' : 'In progress'}
+                {complete ? 'Completed' : pair.start ? 'In progress' : 'Orphan end'}
               </span>
             </div>
+
+            {pair.start && (
+              <div style={{ fontSize: '11px', color: 'var(--text-2)', marginBottom: '10px', display: 'flex', gap: '16px' }}>
+                <span>▶ Start: <strong>{fmt(pair.start.created_at)}</strong></span>
+                {pair.end && <span>■ End: <strong>{fmt(pair.end.created_at)}</strong></span>}
+              </div>
+            )}
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
               {machineList.map(m => {
