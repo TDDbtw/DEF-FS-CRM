@@ -1,10 +1,19 @@
 import React, { useState } from 'react';
-import { MessageSquare, Phone, AlertTriangle, AlertCircle, CheckCircle, ArrowUpDown } from 'lucide-react';
+import { MessageSquare, Phone, AlertTriangle, AlertCircle, CheckCircle, ArrowUpDown, Calendar, BookOpen, MapPin, HelpCircle } from 'lucide-react';
+import Modal from '../components/Modal';
+import { MACHINES } from '../config/machines';
 
 export default function Alerts({ customers, fills }) {
   const [sortBy, setSortBy] = useState('days');
   const [page, setPage] = useState(1);
   const perPage = 10;
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [selectedCust, setSelectedCust] = useState(null);
+
+  const handleOpenDetail = (cust) => {
+    setSelectedCust(cust);
+    setDetailModalOpen(true);
+  };
 
   const activeDays = Number(import.meta.env.VITE_ACTIVE_DAYS) || 21;
   const atRiskDays = Number(import.meta.env.VITE_ATRISK_DAYS) || 45;
@@ -64,7 +73,8 @@ export default function Alerts({ customers, fills }) {
       <div 
         key={c.id} 
         className={`customer-card ${type}`} 
-        style={{ marginBottom: '8px' }}
+        style={{ marginBottom: '8px', cursor: 'pointer' }}
+        onClick={() => handleOpenDetail(c)}
       >
         <div className="cc-top">
           <div>
@@ -197,6 +207,104 @@ export default function Alerts({ customers, fills }) {
           )}
         </>
       )}
+
+      {selectedCust && (() => {
+        const stats = getCustomerStatus(selectedCust);
+        const custFills = fills
+          .filter(f => f.vehicle.toUpperCase() === selectedCust.vehicle.toUpperCase())
+          .sort((a, b) => new Date(b.ts) - new Date(a.ts));
+
+        return (
+          <Modal
+            isOpen={detailModalOpen}
+            onClose={() => setDetailModalOpen(false)}
+            title={selectedCust.name}
+          >
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '16px' }}>
+              <div className="stat-card">
+                <div className="stat-label">Total Fills</div>
+                <div className="stat-val">{stats.fillCount}</div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-label">Total Litres</div>
+                <div className="stat-val">{stats.totalLitres.toFixed(0)}L</div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-label">Total Revenue</div>
+                <div className="stat-val" style={{ fontSize: '18px' }}>₹{(stats.totalLitres * 55).toLocaleString('en-IN')}</div>
+              </div>
+              <div className={`stat-card ${stats.status === 'at-risk' || stats.status === 'churned' ? 'warn' : ''}`}>
+                <div className="stat-label">Last Fill Visit</div>
+                <div className="stat-val" style={{ fontSize: '18px' }}>
+                  {stats.daysSince === null ? '—' : stats.daysSince === 0 ? 'Today' : `${stats.daysSince}d ago`}
+                </div>
+              </div>
+            </div>
+
+            <div className="section-label">Details</div>
+            <div style={{ display: 'grid', gap: '6px', marginBottom: '16px', fontSize: '13px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-2)', display: 'flex', alignItems: 'center', gap: '4px' }}><Calendar size={13} /> Vehicle</span>
+                <span style={{ fontFamily: 'var(--mono)', fontWeight: '600' }}>{selectedCust.vehicle}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-2)', display: 'flex', alignItems: 'center', gap: '4px' }}><Phone size={13} /> Phone</span>
+                <span>{selectedCust.phone || '—'}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-2)', display: 'flex', alignItems: 'center', gap: '4px' }}><BookOpen size={13} /> Company</span>
+                <span>{selectedCust.company || '—'}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-2)', display: 'flex', alignItems: 'center', gap: '4px' }}><Phone size={13} /> Company contact</span>
+                <span>{selectedCust.co_phone || '—'}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-2)', display: 'flex', alignItems: 'center', gap: '4px' }}><MapPin size={13} /> State</span>
+                <span>{selectedCust.state}</span>
+              </div>
+              {selectedCust.notes && (
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--text-2)', display: 'flex', alignItems: 'center', gap: '4px' }}><HelpCircle size={13} /> Notes</span>
+                  <span>{selectedCust.notes}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="section-label">Recent Fills</div>
+            {custFills.slice(0, 5).map(f => (
+              <div key={f.id} style={{ padding: '8px 0', borderBottom: '1px solid var(--border)', fontSize: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div>
+                    <div style={{ fontWeight: '500' }}>
+                      {new Date(f.ts).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </div>
+                    <div style={{ color: 'var(--text-3)' }}>
+                      {f.employee} · {f.payment}
+                      {f.driver && <span> · {f.driver}</span>}
+                      {f.company && <span> · {f.company}</span>}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <span className={f.machine === 'hp' ? 'pill-hp' : f.machine === 'cb' ? 'pill-cb' : 'pill-warn'}>
+                      {MACHINES[f.machine]?.name || f.machine.toUpperCase()}
+                    </span>
+                    <div style={{ marginTop: '4px', fontFamily: 'var(--mono)' }}>{f.litres}L · ₹{(f.final || 0).toLocaleString('en-IN')}</div>
+                  </div>
+                </div>
+                {f.notes && (
+                  <div style={{ color: 'var(--text-3)', marginTop: '4px', paddingLeft: '2px', fontStyle: 'italic', fontSize: '11px' }}>
+                    “{f.notes}”
+                  </div>
+                )}
+              </div>
+            ))}
+            {custFills.length === 0 && (
+              <div style={{ color: 'var(--text-3)', fontSize: '13px', textAlign: 'center', padding: '10px 0' }}>No fills recorded yet.</div>
+            )}
+          </Modal>
+        );
+      })()}
     </div>
   );
 }
