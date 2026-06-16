@@ -7,6 +7,7 @@ export default function FillHistory({ fills }) {
   const [dateTo, setDateTo] = useState('');
   const [selectedMachine, setSelectedMachine] = useState('all');
   const [selectedEmployee, setSelectedEmployee] = useState('all');
+  const [selectedType, setSelectedType] = useState('all');
 
   const employees = [...new Set(fills.map(f => f.employee))].sort();
 
@@ -22,6 +23,7 @@ export default function FillHistory({ fills }) {
     }
     if (selectedMachine !== 'all' && f.machine !== selectedMachine) return false;
     if (selectedEmployee !== 'all' && f.employee !== selectedEmployee) return false;
+    if (selectedType !== 'all' && (f.entry_type || 'sale') !== selectedType) return false;
     return true;
   });
 
@@ -30,6 +32,7 @@ export default function FillHistory({ fills }) {
     setDateTo('');
     setSelectedMachine('all');
     setSelectedEmployee('all');
+    setSelectedType('all');
   };
 
   const exportCSV = () => {
@@ -38,6 +41,7 @@ export default function FillHistory({ fills }) {
     try {
       const headers = [
         'Timestamp',
+        'Type',
         'Employee',
         'Machine',
         'Vehicle',
@@ -66,6 +70,7 @@ export default function FillHistory({ fills }) {
 
         return [
           new Date(f.ts).toLocaleString('en-IN'),
+          f.entry_type || 'sale',
           f.employee,
           MACHINES[f.machine]?.name || f.machine.toUpperCase(),
           f.vehicle,
@@ -150,7 +155,14 @@ export default function FillHistory({ fills }) {
               <option key={emp} value={emp}>{emp}</option>
             ))}
           </select>
-          {(dateFrom || dateTo || selectedMachine !== 'all' || selectedEmployee !== 'all') && (
+          <label style={{ fontSize: '12px', color: 'var(--text-3)' }}>Type:</label>
+          <select value={selectedType} onChange={e => setSelectedType(e.target.value)} style={{ fontSize: '12px', padding: '4px 8px', border: '1px solid var(--border-mid)', borderRadius: 'var(--radius)', background: 'var(--surface)', color: 'var(--text)' }}>
+            <option value="all">All</option>
+            <option value="sale">Sale</option>
+            <option value="test">Test Dispense</option>
+            <option value="spillage">Spillage</option>
+          </select>
+          {(dateFrom || dateTo || selectedMachine !== 'all' || selectedEmployee !== 'all' || selectedType !== 'all') && (
             <button className="btn btn-outline btn-sm" onClick={clearFilters} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', padding: '4px 8px' }}>
               <X size={12} /> Clear
             </button>
@@ -172,6 +184,7 @@ export default function FillHistory({ fills }) {
               <thead>
                 <tr>
                   <th>Date & Time</th>
+                  <th>Type</th>
                   <th>Employee</th>
                   <th>Machine</th>
                   <th>Driver</th>
@@ -196,6 +209,16 @@ export default function FillHistory({ fills }) {
                         hour: '2-digit',
                         minute: '2-digit'
                       })}
+                    </td>
+                    <td>
+                      <span style={{
+                        fontSize: '10px', fontWeight: '600', padding: '2px 6px', borderRadius: '10px',
+                        background: (f.entry_type || 'sale') === 'sale' ? 'var(--ok-soft)' : (f.entry_type || 'sale') === 'test' ? 'var(--hp-soft)' : 'var(--warn-soft)',
+                        color: (f.entry_type || 'sale') === 'sale' ? 'var(--ok)' : (f.entry_type || 'sale') === 'test' ? 'var(--hp)' : 'var(--warn)',
+                        whiteSpace: 'nowrap'
+                      }}>
+                        {(f.entry_type || 'sale') === 'sale' ? 'Sale' : (f.entry_type || 'sale') === 'test' ? 'Test' : 'Spill'}
+                      </span>
                     </td>
                     <td>{f.employee}</td>
                     <td>

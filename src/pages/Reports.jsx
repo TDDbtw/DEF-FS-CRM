@@ -30,6 +30,7 @@ export default function Reports({ fills }) {
       if (d < from || d > to) return false;
       if (selectedEmployee !== 'all' && f.employee !== selectedEmployee) return false;
       if (selectedShift !== 'all' && getShiftType(f.ts) !== selectedShift) return false;
+      if (f.entry_type && f.entry_type !== 'sale') return false;
       return true;
     });
   }, [fills, fromDate, toDate, selectedEmployee, selectedShift]);

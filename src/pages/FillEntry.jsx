@@ -7,6 +7,7 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
   const [selectedMachine, setSelectedMachine] = useState('hp');
   
   // Form Fields
+  const [entryType, setEntryType] = useState('sale');
   const [vehicle, setVehicle] = useState('');
   const [driver, setDriver] = useState('');
   const [driverPh, setDriverPh] = useState('');
@@ -171,9 +172,16 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!vehicle || !driver || !litres || !actual || !payment) {
-      triggerToast('Please fill in all required fields (*)', 'warn');
-      return;
+    if (entryType === 'test' || entryType === 'spillage') {
+      if (!litres) {
+        triggerToast(entryType === 'test' ? 'Enter the litres dispensed' : 'Enter the litres spilled', 'warn');
+        return;
+      }
+    } else {
+      if (!vehicle || !driver || !litres || !actual || !payment) {
+        triggerToast('Please fill in all required fields (*)', 'warn');
+        return;
+      }
     }
 
     if (payment === 'Cash + GPay') {
@@ -196,20 +204,21 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
     const payload = {
       employee: currentUser?.name || 'Unknown',
       machine: selectedMachine,
-      vehicle: vehicle.trim(),
-      driver: driver.trim(),
-      driver_ph: driverPh.trim() || null,
-      company: company.trim() || null,
-      co_ph: coPh.trim() || null,
-      odo: odo ? parseFloat(odo) : null,
-      state,
+      entry_type: entryType,
+      vehicle: entryType === 'test' ? null : vehicle.trim(),
+      driver: entryType === 'test' ? null : driver.trim(),
+      driver_ph: entryType === 'test' ? null : (driverPh.trim() || null),
+      company: entryType === 'test' ? null : (company.trim() || null),
+      co_ph: entryType === 'test' ? null : (coPh.trim() || null),
+      odo: entryType === 'test' ? null : (odo ? parseFloat(odo) : null),
+      state: entryType === 'test' ? null : state,
       litres: parseFloat(litres),
-      actual: parseFloat(actual),
-      discount: parseFloat(discount) || 0,
-      final: collectVal,
-      payment,
-      split_cash: payment === 'Cash + GPay' || payment === 'GPay + Cash Discount' ? (parseFloat(splitCash) || 0) : null,
-      split_gpay: payment === 'Cash + GPay' ? (parseFloat(splitGpay) || 0) : payment === 'GPay + Cash Discount' ? actualVal : null,
+      actual: entryType === 'test' ? 0 : actualVal,
+      discount: entryType === 'test' ? 0 : discVal,
+      final: entryType === 'test' ? 0 : collectVal,
+      payment: entryType === 'test' ? null : payment,
+      split_cash: entryType === 'test' ? null : (payment === 'Cash + GPay' || payment === 'GPay + Cash Discount' ? (parseFloat(splitCash) || 0) : null),
+      split_gpay: entryType === 'test' ? null : (payment === 'Cash + GPay' ? (parseFloat(splitGpay) || 0) : payment === 'GPay + Cash Discount' ? actualVal : null),
       shift: 'Mid-shift fill',
       notes: notes.trim() || null
     };
@@ -219,13 +228,15 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
     if (error) {
       triggerToast('Error saving entry: ' + error.message, 'warn');
     } else {
-      triggerToast('Fill entry saved successfully ✓');
+      const msg = entryType === 'test' ? 'Test dispense logged ✓' : entryType === 'spillage' ? 'Spillage recorded ✓' : 'Fill entry saved successfully ✓';
+      triggerToast(msg);
       resetForm();
       refreshData();
     }
   };
 
   const resetForm = () => {
+    setEntryType('sale');
     setVehicle('');
     setDriver('');
     setDriverPh('');
@@ -255,6 +266,36 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
       </div>
 
       <form onSubmit={handleSubmit}>
+        {/* Entry type selector */}
+        <div className="card card-pad" style={{ marginBottom: '14px' }}>
+          <div className="section-label">Entry Type</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+            {[
+              ['sale', '💰 Sale', 'Customer fuel sale'],
+              ['test', '🔧 Test Dispense', 'Calibration check, poured back'],
+              ['spillage', '⚠️ Spillage', 'Accidental loss during fill'],
+            ].map(([v, label, hint]) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setEntryType(v)}
+                style={{
+                  padding: '10px 0', textAlign: 'center', fontSize: '12px', fontWeight: '500',
+                  border: `1.5px solid ${entryType === v ? 'var(--green)' : 'var(--border-mid)'}`,
+                  borderRadius: 'var(--radius)', cursor: 'pointer',
+                  background: entryType === v ? 'var(--green-soft)' : 'var(--surface)',
+                  color: entryType === v ? 'var(--green)' : 'var(--text-2)',
+                  transition: 'all .15s'
+                }}
+                title={hint}
+              >
+                <div>{label}</div>
+                <div style={{ fontSize: '10px', marginTop: '2px', fontWeight: '400', opacity: '0.7' }}>{hint}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Machine selection card */}
         <div className="card card-pad" style={{ marginBottom: '14px' }}>
           <div className="section-label">Select Machine</div>
@@ -286,7 +327,8 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
           </div>
         </div>
 
-        {/* Vehicle Lookup */}
+        {/* Vehicle Lookup — hidden for test dispense only */}
+        {entryType !== 'test' && (
         <div className="card card-pad" style={{ marginBottom: '14px', position: 'relative' }}>
           <div className="section-label">Vehicle Lookup</div>
           <div className="fg ac-wrap" ref={acRef}>
@@ -336,8 +378,10 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
             </div>
           )}
         </div>
+        )}
 
-        {/* Driver + company details */}
+        {/* Driver + company details — hidden for test dispense */}
+        {entryType !== 'test' && (
         <div className="card card-pad" style={{ marginBottom: '14px' }}>
           <div className="section-label">Driver & Company Details</div>
           <div className="form-grid">
@@ -408,14 +452,15 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
             </div>
           </div>
         </div>
+        )}
 
         {/* Transaction entries */}
         <div className="card card-pad" style={{ marginBottom: '14px' }}>
-          <div className="section-label">Transaction Summary</div>
+          <div className="section-label">{entryType === 'test' ? 'Test Dispense' : entryType === 'spillage' ? 'Spillage' : 'Transaction Summary'}</div>
           <div className="form-grid">
             <div className="form-row">
               <div className="fg">
-                <label>Litres filled <span className="req">*</span></label>
+                <label>{entryType === 'test' ? 'Litres dispensed' : entryType === 'spillage' ? 'Litres spilled' : 'Litres filled'} <span className="req">*</span></label>
                 <input
                   type="number"
                   value={litres}
@@ -424,6 +469,16 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
                   step="0.01"
                 />
               </div>
+              {entryType !== 'sale' ? (
+                <div className="fg">
+                  <label>Machine <span className="req">*</span></label>
+                  <select value={selectedMachine} onChange={e => setSelectedMachine(e.target.value)} style={{ width: '100%', padding: '8px 10px', border: '1px solid var(--border-mid)', borderRadius: 'var(--radius)', fontSize: '13px', color: 'var(--text)', background: 'var(--surface)', outline: 'none' }}>
+                    {Object.values(MACHINES).map(m => (
+                      <option key={m.id} value={m.id}>{m.name}</option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
               <div className="fg">
                 <label>Actual amount ₹ <span className="req">*</span></label>
                 <input
@@ -433,74 +488,90 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
                   placeholder="₹ 0"
                 />
               </div>
+              )}
             </div>
-            <div className="fg">
-              <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                Discount ₹
-                <span 
-                  style={{
-                    background: discManualEdited ? '#fff3e0' : '#e8f5e9',
-                    color: discManualEdited ? '#92400e' : '#2e7d32',
-                    padding: '2px 8px',
-                    borderRadius: '20px',
-                    fontSize: '10px',
-                    fontWeight: '500'
-                  }}
-                >
-                  {discManualEdited ? 'custom' : `₹1/L auto (₹${Math.round(L)})`}
-                </span>
-              </label>
-              <div style={{ display: 'flex', gap: '6px' }}>
-                <input
-                  type="number"
-                  value={discount}
-                  onChange={(e) => handleDiscChange(e.target.value)}
-                  placeholder="₹ 0"
-                  style={{ flex: 1 }}
-                />
-                <button 
-                  type="button" 
-                  className="btn btn-outline btn-sm"
-                  onClick={resetDiscount}
-                  style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
-                >
-                  <RotateCcw size={12} />
-                  Reset
-                </button>
+
+            {entryType === 'sale' && (
+              <div className="fg">
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  Discount ₹
+                  <span 
+                    style={{
+                      background: discManualEdited ? '#fff3e0' : '#e8f5e9',
+                      color: discManualEdited ? '#92400e' : '#2e7d32',
+                      padding: '2px 8px',
+                      borderRadius: '20px',
+                      fontSize: '10px',
+                      fontWeight: '500'
+                    }}
+                  >
+                    {discManualEdited ? 'custom' : `₹1/L auto (₹${Math.round(L)})`}
+                  </span>
+                </label>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <input
+                    type="number"
+                    value={discount}
+                    onChange={(e) => handleDiscChange(e.target.value)}
+                    placeholder="₹ 0"
+                    style={{ flex: 1 }}
+                  />
+                  <button 
+                    type="button" 
+                    className="btn btn-outline btn-sm"
+                    onClick={resetDiscount}
+                    style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
+                  >
+                    <RotateCcw size={12} />
+                    Reset
+                  </button>
+                </div>
               </div>
-            </div>
-            <div className="summary-box">
-              <div className="sum-row">
-                <span className="sum-label">Taxable amount</span>
-                <span className="sum-val">{L > 0 ? `₹${taxableAmount.toFixed(2)}` : '—'}</span>
+            )}
+
+            {entryType === 'sale' && (() => {
+              const actualVal = parseFloat(actual) || 0;
+              const taxableAmount = actualVal > 0 ? Math.round(actualVal / 1.18 * 100) / 100 : 0;
+              const cgst = Math.round(taxableAmount * 0.09 * 100) / 100;
+              const sgst = Math.round(taxableAmount * 0.09 * 100) / 100;
+              const discVal = parseFloat(discount) || 0;
+              const collectVal = Math.max(0, actualVal - discVal);
+              return (
+              <div className="summary-box">
+                <div className="sum-row">
+                  <span className="sum-label">Taxable amount</span>
+                  <span className="sum-val">{L > 0 ? `₹${taxableAmount.toFixed(2)}` : '—'}</span>
+                </div>
+                <div className="sum-row" style={{ fontSize: '11px' }}>
+                  <span className="sum-label">CGST (9%)</span>
+                  <span className="sum-val" style={{ color: 'var(--text-2)' }}>{L > 0 ? `₹${cgst.toFixed(2)}` : '—'}</span>
+                </div>
+                <div className="sum-row" style={{ fontSize: '11px' }}>
+                  <span className="sum-label">SGST (9%)</span>
+                  <span className="sum-val" style={{ color: 'var(--text-2)' }}>{L > 0 ? `₹${sgst.toFixed(2)}` : '—'}</span>
+                </div>
+                <div className="sum-row">
+                  <span className="sum-label">Actual amount (incl. GST)</span>
+                  <span className="sum-val">{actualVal > 0 ? `₹${actualVal.toLocaleString('en-IN')}` : '—'}</span>
+                </div>
+                <div className="sum-row">
+                  <span className="sum-label">Discount</span>
+                  <span className="sum-val">{discVal > 0 ? `−₹${discVal}` : '—'}</span>
+                </div>
+                <div className="sum-row total">
+                  <span className="sum-label">Collect</span>
+                  <span className="sum-val" style={{ color: 'var(--green)' }}>
+                    {collectVal > 0 ? `₹${collectVal.toLocaleString('en-IN')}` : '—'}
+                  </span>
+                </div>
               </div>
-              <div className="sum-row" style={{ fontSize: '11px' }}>
-                <span className="sum-label">CGST (9%)</span>
-                <span className="sum-val" style={{ color: 'var(--text-2)' }}>{L > 0 ? `₹${cgst.toFixed(2)}` : '—'}</span>
-              </div>
-              <div className="sum-row" style={{ fontSize: '11px' }}>
-                <span className="sum-label">SGST (9%)</span>
-                <span className="sum-val" style={{ color: 'var(--text-2)' }}>{L > 0 ? `₹${sgst.toFixed(2)}` : '—'}</span>
-              </div>
-              <div className="sum-row">
-                <span className="sum-label">Actual amount (incl. GST)</span>
-                <span className="sum-val">{actualVal > 0 ? `₹${actualVal.toLocaleString('en-IN')}` : '—'}</span>
-              </div>
-              <div className="sum-row">
-                <span className="sum-label">Discount</span>
-                <span className="sum-val">{discVal > 0 ? `−₹${discVal}` : '—'}</span>
-              </div>
-              <div className="sum-row total">
-                <span className="sum-label">Collect</span>
-                <span className="sum-val" style={{ color: 'var(--green)' }}>
-                  {collectVal > 0 ? `₹${collectVal.toLocaleString('en-IN')}` : '—'}
-                </span>
-              </div>
-            </div>
+              );
+            })()}
           </div>
         </div>
 
-        {/* Shift totalizers & payment */}
+        {/* Shift totalizers & payment — only for sale */}
+        {entryType === 'sale' && (
         <div className="card card-pad" style={{ marginBottom: '14px' }}>
           <div className="section-label">Payment & Shift Status</div>
           <div className="form-row">
@@ -601,6 +672,7 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
             />
           </div>
         </div>
+        )}
 
         <button 
           type="submit" 
