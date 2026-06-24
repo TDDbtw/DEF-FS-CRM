@@ -96,7 +96,7 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
     }
 
     const matches = customers.filter(c => 
-      c.vehicle.toUpperCase().includes(v) ||
+      (c.vehicle || '').toUpperCase().includes(v) ||
       c.name.toLowerCase().includes(val.toLowerCase()) ||
       (c.company && c.company.toLowerCase().includes(val.toLowerCase()))
     );
@@ -125,7 +125,7 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
 
     // Look up last transaction for this customer to auto-select their last payment type/machine
     const custFills = fills
-      .filter(f => f.vehicle.toUpperCase() === cust.vehicle.toUpperCase())
+      .filter(f => (f.vehicle || '').toUpperCase() === (cust.vehicle || '').toUpperCase())
       .sort((a, b) => new Date(b.ts) - new Date(a.ts));
     
     if (custFills.length > 0) {
@@ -348,9 +348,9 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
             {acOpen && (
               <div className="ac-dropdown open" style={{ width: '100%' }}>
                 {acMatches.map(c => {
-                  const lastFill = fills.filter(f => f.vehicle.toUpperCase() === c.vehicle.toUpperCase()).sort((a,b) => new Date(b.ts) - new Date(a.ts))[0];
+                  const lastFill = fills.filter(f => (f.vehicle || '').toUpperCase() === (c.vehicle || '').toUpperCase()).sort((a,b) => new Date(b.ts) - new Date(a.ts))[0];
                   const daysSince = lastFill ? Math.floor((Date.now() - new Date(lastFill.ts).getTime()) / 86400000) : null;
-                  const fillCount = fills.filter(f => f.vehicle.toUpperCase() === c.vehicle.toUpperCase()).length;
+                  const fillCount = fills.filter(f => (f.vehicle || '').toUpperCase() === (c.vehicle || '').toUpperCase()).length;
 
                   return (
                     <div key={c.id} className="ac-item" onClick={() => handleAutofill(c)}>

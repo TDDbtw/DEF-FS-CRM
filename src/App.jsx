@@ -112,7 +112,7 @@ export default function App() {
   const getAlertsCount = () => {
     return customers.filter(c => {
       const custFills = fills
-        .filter(f => f.vehicle.toUpperCase() === c.vehicle.toUpperCase())
+        .filter(f => (f.vehicle || '').toUpperCase() === (c.vehicle || '').toUpperCase())
         .sort((a, b) => new Date(b.ts) - new Date(a.ts));
         
       if (custFills.length === 0) return false;

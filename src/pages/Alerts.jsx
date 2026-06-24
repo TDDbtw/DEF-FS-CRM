@@ -20,7 +20,7 @@ export default function Alerts({ customers, fills }) {
 
   const getCustomerStatus = (cust) => {
     const custFills = fills
-      .filter(f => f.vehicle.toUpperCase() === cust.vehicle.toUpperCase())
+      .filter(f => (f.vehicle || '').toUpperCase() === (cust.vehicle || '').toUpperCase())
       .sort((a, b) => new Date(b.ts) - new Date(a.ts));
       
     if (custFills.length === 0) {
@@ -211,7 +211,7 @@ export default function Alerts({ customers, fills }) {
       {selectedCust && (() => {
         const stats = getCustomerStatus(selectedCust);
         const custFills = fills
-          .filter(f => f.vehicle.toUpperCase() === selectedCust.vehicle.toUpperCase())
+          .filter(f => (f.vehicle || '').toUpperCase() === (selectedCust.vehicle || '').toUpperCase())
           .sort((a, b) => new Date(b.ts) - new Date(a.ts));
 
         return (

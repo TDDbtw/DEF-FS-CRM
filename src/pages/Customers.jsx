@@ -25,7 +25,7 @@ export default function Customers({ customers, fills, triggerToast, refreshData 
   // Helper: calculate customer status and stats
   const getCustomerStatus = (cust) => {
     const custFills = fills
-      .filter(f => f.vehicle.toUpperCase() === cust.vehicle.toUpperCase())
+      .filter(f => (f.vehicle || '').toUpperCase() === (cust.vehicle || '').toUpperCase())
       .sort((a, b) => new Date(b.ts) - new Date(a.ts));
       
     if (custFills.length === 0) {
@@ -271,7 +271,7 @@ export default function Customers({ customers, fills, triggerToast, refreshData 
       {selectedCust && (() => {
         const stats = getCustomerStatus(selectedCust);
         const custFills = fills
-          .filter(f => f.vehicle.toUpperCase() === selectedCust.vehicle.toUpperCase())
+          .filter(f => (f.vehicle || '').toUpperCase() === (selectedCust.vehicle || '').toUpperCase())
           .sort((a, b) => new Date(b.ts) - new Date(a.ts));
           
         return (
