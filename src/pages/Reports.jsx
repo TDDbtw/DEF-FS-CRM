@@ -26,13 +26,27 @@ export default function Reports({ fills }) {
   const [selectedShift, setSelectedShift] = useState('all');
 
   const filtered = useMemo(() => {
-    const from = new Date(fromDate);
-    const to = new Date(toDate + 'T23:59:59');
+    const from = fromDate ? new Date(fromDate) : null;
+    const to = toDate ? new Date(toDate + 'T23:59:59') : null;
     return fills.filter(f => {
       const d = new Date(f.ts);
-      if (d < from || d > to) return false;
+      const shiftType = getShiftType(f.ts);
+      const shiftDay = getShiftDay(f.ts);
+      if (selectedShift !== 'all') {
+        if (shiftType !== selectedShift) return false;
+        if (selectedShift === 'night') {
+          const sd = new Date(shiftDay);
+          if (from && sd < from) return false;
+          if (to && sd > to) return false;
+        } else {
+          if (from && d < from) return false;
+          if (to && d > to) return false;
+        }
+      } else {
+        if (from && d < from) return false;
+        if (to && d > to) return false;
+      }
       if (selectedEmployee !== 'all' && f.employee !== selectedEmployee) return false;
-      if (selectedShift !== 'all' && getShiftType(f.ts) !== selectedShift) return false;
       if (f.entry_type && f.entry_type !== 'sale') return false;
       return true;
     });
