@@ -593,7 +593,7 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
               }}>
                 <option value="">Select payment method</option>
                 <option value="Cash">Cash</option>
-                <option value="GPay / UPI">GPay / UPI</option>
+                <option value="GPay">GPay</option>
                 <option value="Cash + GPay">Cash + GPay</option>
                 <option value="GPay + Cash Discount">GPay + Cash Discount</option>
                 <option value="Credit">Credit</option>

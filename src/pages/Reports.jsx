@@ -61,7 +61,7 @@ export default function Reports({ fills }) {
         e.gpay += f.split_gpay || 0;
         e.cash -= f.split_cash || 0;
       } else if (p === 'Cash') e.cash += f.final || 0;
-      else if (p === 'GPay / UPI') e.gpay += f.final || 0;
+      else if (p === 'GPay') e.gpay += f.final || 0;
       else e.credit += f.final || 0;
     });
     return map;
@@ -83,7 +83,7 @@ export default function Reports({ fills }) {
         e.gpay += f.split_gpay || 0;
         e.cash -= f.split_cash || 0;
       } else if (p === 'Cash') e.cash += f.final || 0;
-      else if (p === 'GPay / UPI') e.gpay += f.final || 0;
+      else if (p === 'GPay') e.gpay += f.final || 0;
       else e.credit += f.final || 0;
     });
     return map;
@@ -108,7 +108,7 @@ export default function Reports({ fills }) {
         s.gpay += f.split_gpay || 0;
         s.cash -= f.split_cash || 0;
       } else if (p === 'Cash') s.cash += f.final || 0;
-      else if (p === 'GPay / UPI') s.gpay += f.final || 0;
+      else if (p === 'GPay') s.gpay += f.final || 0;
       else s.credit += f.final || 0;
     });
     return Object.entries(days).sort((a, b) => b[0].localeCompare(a[0]));
@@ -131,7 +131,7 @@ export default function Reports({ fills }) {
         s.gpay += f.split_gpay || 0;
         s.cash -= f.split_cash || 0;
       } else if (p === 'Cash') s.cash += f.final || 0;
-      else if (p === 'GPay / UPI') s.gpay += f.final || 0;
+      else if (p === 'GPay') s.gpay += f.final || 0;
       else s.credit += f.final || 0;
     });
     return t;
@@ -439,7 +439,7 @@ export default function Reports({ fills }) {
                   <tr>
                     <th style={thStyle}>Employee</th>
                     <th style={{ ...thStyle, textAlign: 'right' }}>Cash</th>
-                    <th style={{ ...thStyle, textAlign: 'right' }}>GPay/UPI</th>
+                    <th style={{ ...thStyle, textAlign: 'right' }}>GPay</th>
                     <th style={{ ...thStyle, textAlign: 'right' }}>Credit</th>
                     <th style={{ ...thStyle, textAlign: 'right' }}>Total</th>
                   </tr>

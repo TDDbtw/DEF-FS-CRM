@@ -37,7 +37,7 @@ export default function Dashboard({ customers, fills }) {
   
   // Dynamic payment calculations
   const cashAmt = todayFills.filter(f => f.payment === 'Cash').reduce((sum, f) => sum + (f.final || 0), 0);
-  const gpayAmt = todayFills.filter(f => f.payment === 'GPay / UPI').reduce((sum, f) => sum + (f.final || 0), 0);
+  const gpayAmt = todayFills.filter(f => f.payment === 'GPay').reduce((sum, f) => sum + (f.final || 0), 0);
   const creditAmt = todayFills.filter(f => f.payment === 'Credit').reduce((sum, f) => sum + (f.final || 0), 0);
   const totalPaymentAmt = cashAmt + gpayAmt + creditAmt || 1;
 
@@ -120,7 +120,7 @@ export default function Dashboard({ customers, fills }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             {[
               { label: 'Cash', color: '#1a6e3c', amount: cashAmt },
-              { label: 'GPay / UPI', color: '#0c5aa6', amount: gpayAmt },
+              { label: 'GPay', color: '#0c5aa6', amount: gpayAmt },
               { label: 'Credit', color: '#d97706', amount: creditAmt }
             ].map((p) => {
               const pct = Math.round((p.amount / totalPaymentAmt) * 100);
