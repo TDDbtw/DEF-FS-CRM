@@ -12,7 +12,10 @@ const getShiftType = (ts) => {
 const getShiftDay = (ts) => {
   const d = new Date(ts);
   if (d.getHours() < 9) d.setDate(d.getDate() - 1);
-  return d.toISOString().split('T')[0];
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 };
 
 export default function Reports({ fills }) {

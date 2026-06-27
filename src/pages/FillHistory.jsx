@@ -2,12 +2,27 @@ import React, { useState } from 'react';
 import { Download, Calendar, ArrowUpDown, X } from 'lucide-react';
 import { MACHINES } from '../config/machines';
 
+const getShiftType = (ts) => {
+  const h = new Date(ts).getHours();
+  return h >= 9 && h < 21 ? 'morning' : 'night';
+};
+
+const getShiftDay = (ts) => {
+  const d = new Date(ts);
+  if (d.getHours() < 9) d.setDate(d.getDate() - 1);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
 export default function FillHistory({ fills }) {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [selectedMachine, setSelectedMachine] = useState('all');
   const [selectedEmployee, setSelectedEmployee] = useState('all');
   const [selectedType, setSelectedType] = useState('all');
+  const [selectedShift, setSelectedShift] = useState('all');
 
   const employees = [...new Set(fills.map(f => f.employee))].sort();
 
@@ -15,12 +30,28 @@ export default function FillHistory({ fills }) {
 
   const filteredFills = sortedFills.filter(f => {
     const d = new Date(f.ts);
-    if (dateFrom && d < new Date(dateFrom)) return false;
-    if (dateTo) {
-      const end = new Date(dateTo);
-      end.setHours(23, 59, 59, 999);
-      if (d > end) return false;
+    const shiftType = getShiftType(f.ts);
+    const shiftDay = getShiftDay(f.ts);
+
+    if (selectedShift === 'night') {
+      if (shiftType !== 'night') return false;
+      const sd = new Date(shiftDay);
+      if (dateFrom && sd < new Date(dateFrom)) return false;
+      if (dateTo) {
+        const end = new Date(dateTo);
+        end.setHours(23, 59, 59, 999);
+        if (sd > end) return false;
+      }
+    } else {
+      if (selectedShift === 'morning' && shiftType !== 'morning') return false;
+      if (dateFrom && d < new Date(dateFrom)) return false;
+      if (dateTo) {
+        const end = new Date(dateTo);
+        end.setHours(23, 59, 59, 999);
+        if (d > end) return false;
+      }
     }
+
     if (selectedMachine !== 'all' && f.machine !== selectedMachine) return false;
     if (selectedEmployee !== 'all' && f.employee !== selectedEmployee) return false;
     if (selectedType !== 'all' && (f.entry_type || 'sale') !== selectedType) return false;
@@ -33,6 +64,7 @@ export default function FillHistory({ fills }) {
     setSelectedMachine('all');
     setSelectedEmployee('all');
     setSelectedType('all');
+    setSelectedShift('all');
   };
 
   const exportCSV = () => {
@@ -162,7 +194,13 @@ export default function FillHistory({ fills }) {
             <option value="test">Test Dispense</option>
             <option value="spillage">Spillage</option>
           </select>
-          {(dateFrom || dateTo || selectedMachine !== 'all' || selectedEmployee !== 'all' || selectedType !== 'all') && (
+          <label style={{ fontSize: '12px', color: 'var(--text-3)' }}>Shift:</label>
+          <select value={selectedShift} onChange={e => setSelectedShift(e.target.value)} style={{ fontSize: '12px', padding: '4px 8px', border: '1px solid var(--border-mid)', borderRadius: 'var(--radius)', background: 'var(--surface)', color: 'var(--text)' }}>
+            <option value="all">All</option>
+            <option value="morning">Morning (9AM–9PM)</option>
+            <option value="night">Night (9PM–9AM)</option>
+          </select>
+          {(dateFrom || dateTo || selectedMachine !== 'all' || selectedEmployee !== 'all' || selectedType !== 'all' || selectedShift !== 'all') && (
             <button className="btn btn-outline btn-sm" onClick={clearFilters} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', padding: '4px 8px' }}>
               <X size={12} /> Clear
             </button>
