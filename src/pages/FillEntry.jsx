@@ -296,37 +296,6 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
           </div>
         </div>
 
-        {/* Machine selection card */}
-        <div className="card card-pad" style={{ marginBottom: '14px' }}>
-          <div className="section-label">Select Machine</div>
-          <div 
-            className="machine-toggle" 
-            style={{ 
-              borderColor: MACHINES[selectedMachine].themeColor,
-              display: 'grid',
-              gridTemplateColumns: `repeat(${Object.keys(MACHINES).length}, 1fr)` 
-            }}
-          >
-            {Object.values(MACHINES).map((m) => {
-              const active = selectedMachine === m.id;
-              return (
-                <button
-                  type="button"
-                  key={m.id}
-                  className={`mt-opt ${active ? m.color : ''}`}
-                  onClick={() => setSelectedMachine(m.id)}
-                  style={{
-                    background: active ? m.themeColor : 'var(--surface)',
-                    color: active ? '#fff' : 'var(--text-2)'
-                  }}
-                >
-                  {m.name} &nbsp;·&nbsp; ₹{m.rate}/L
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
         {/* Vehicle Lookup — hidden for test dispense only */}
         {entryType !== 'test' && (
         <div className="card card-pad" style={{ marginBottom: '14px', position: 'relative' }}>
@@ -457,6 +426,21 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
         {/* Transaction entries */}
         <div className="card card-pad" style={{ marginBottom: '14px' }}>
           <div className="section-label">{entryType === 'test' ? 'Test Dispense' : entryType === 'spillage' ? 'Spillage' : 'Transaction Summary'}</div>
+          {entryType === 'sale' && (
+          <div style={{ marginBottom: '14px' }}>
+            <div style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>Select Machine</div>
+            <div className="machine-toggle" style={{ borderColor: MACHINES[selectedMachine].themeColor, display: 'grid', gridTemplateColumns: `repeat(${Object.keys(MACHINES).length}, 1fr)` }}>
+              {Object.values(MACHINES).map((m) => {
+                const active = selectedMachine === m.id;
+                return (
+                  <button type="button" key={m.id} className={`mt-opt ${active ? m.color : ''}`} onClick={() => setSelectedMachine(m.id)} style={{ background: active ? m.themeColor : 'var(--surface)', color: active ? '#fff' : 'var(--text-2)' }}>
+                    {m.name} &nbsp;·&nbsp; ₹{m.rate}/L
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          )}
           <div className="form-grid">
             <div className="form-row">
               <div className="fg">
