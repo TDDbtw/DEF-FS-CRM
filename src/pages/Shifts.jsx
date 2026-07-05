@@ -74,6 +74,22 @@ export default function Shifts({ currentUser, triggerToast }) {
 
   paired.reverse(); // most recent first
 
+  // Detect who has active (started but not ended) shifts
+  const activeShifts = {};
+  paired.forEach(p => { if (p.start && !p.end) activeShifts[p.start.employee_name] = true; });
+  const currentUserHasActive = !!activeShifts[currentUser?.name];
+  const otherHasActive = Object.keys(activeShifts).some(name => name !== currentUser?.name);
+
+  // Auto-default to start/end based on active shift status
+  const isStartDisabled = currentUserHasActive || otherHasActive;
+  const isEndDisabled = !currentUserHasActive;
+
+  useEffect(() => {
+    if (!loading) {
+      setType(currentUserHasActive ? 'end' : 'start');
+    }
+  }, [loading, currentUserHasActive]);
+
   const fmt = (iso) => {
     const d = new Date(iso);
     return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
@@ -98,13 +114,17 @@ export default function Shifts({ currentUser, triggerToast }) {
         <div className="section-label">Log shift — {currentUser?.name}</div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '16px' }}>
-          {[['start', '▶ Starting shift'], ['end', '■ Ending shift']].map(([v, label]) => (
-            <button key={v} onClick={() => setType(v)} style={{
+          {[
+            ['start', '▶ Starting shift', isStartDisabled],
+            ['end', '■ Ending shift', isEndDisabled],
+          ].map(([v, label, disabled]) => (
+            <button key={v} disabled={disabled} onClick={() => setType(v)} style={{
               padding: '11px 0', textAlign: 'center', fontSize: '13px', fontWeight: '500',
-              border: `1.5px solid ${type === v ? 'var(--green)' : 'var(--border-mid)'}`,
-              borderRadius: 'var(--radius)', cursor: 'pointer',
-              background: type === v ? 'var(--green-soft)' : 'var(--surface)',
-              color: type === v ? 'var(--green)' : 'var(--text-2)',
+              border: `1.5px solid ${disabled ? 'var(--border)' : (type === v ? 'var(--green)' : 'var(--border-mid)')}`,
+              borderRadius: 'var(--radius)', cursor: disabled ? 'not-allowed' : 'pointer',
+              background: disabled ? 'var(--bg)' : (type === v ? 'var(--green-soft)' : 'var(--surface)'),
+              color: disabled ? 'var(--text-3)' : (type === v ? 'var(--green)' : 'var(--text-2)'),
+              opacity: disabled ? 0.5 : 1,
               transition: 'all .15s'
             }}>
               {label}
@@ -137,10 +157,16 @@ export default function Shifts({ currentUser, triggerToast }) {
           />
         </div>
 
-        <button onClick={save} disabled={saving} style={{
+        {isStartDisabled && isEndDisabled && (
+          <div style={{ fontSize: '12px', color: 'var(--warn)', marginTop: '10px', textAlign: 'center' }}>
+            Another employee has an active shift — cannot start a new one until it ends.
+          </div>
+        )}
+
+        <button onClick={save} disabled={saving || (isStartDisabled && isEndDisabled)} style={{
           marginTop: '14px', width: '100%', justifyContent: 'center', padding: '10px',
-          border: 'none', borderRadius: 'var(--radius)', cursor: 'pointer',
-          background: saving ? 'var(--border-mid)' : 'var(--green)', color: '#fff',
+          border: 'none', borderRadius: 'var(--radius)', cursor: (saving || (isStartDisabled && isEndDisabled)) ? 'not-allowed' : 'pointer',
+          background: (saving || (isStartDisabled && isEndDisabled)) ? 'var(--border-mid)' : 'var(--green)', color: '#fff',
           fontSize: '13px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px',
         }}>
           {saving ? 'Saving…' : (type === 'start' ? <><Play size={14} /> Log shift start</> : <><Square size={14} /> Log shift end</>)}
