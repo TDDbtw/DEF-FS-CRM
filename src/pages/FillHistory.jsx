@@ -88,6 +88,7 @@ export default function FillHistory({ fills }) {
         'Payment',
         '       ',
         'Employee',
+        'Bill',
         'Discount',
         'Split Cash',
         'Split GPay',
@@ -120,6 +121,7 @@ export default function FillHistory({ fills }) {
           f.payment,
           ' ',
           f.employee =='Basil'?"MB":"BH",
+          f.bill_type ? ((f.bill_type || 'gst') === 'gst' ? 'GST bill' : 'non GST') : '',
           f.discount,
           f.split_cash || '',
           f.split_gpay || '',
@@ -230,6 +232,7 @@ export default function FillHistory({ fills }) {
                   <th>Date & Time</th>
                   <th>Type</th>
                   <th>Employee</th>
+                  <th>Bill</th>
                   <th>Machine</th>
                   <th>Driver</th>
                   <th>Truck No</th>
@@ -265,6 +268,9 @@ export default function FillHistory({ fills }) {
                       </span>
                     </td>
                     <td>{f.employee}</td>
+                    <td style={{ fontSize: '11px', fontWeight: '500', color: (f.bill_type || 'gst') === 'gst' ? 'var(--ok)' : 'var(--text-3)' }}>
+                      {f.bill_type ? ((f.bill_type || 'gst') === 'gst' ? 'GST bill' : 'non GST') : '—'}
+                    </td>
                     <td>
                       <span className={
                         f.machine === 'hp' ? 'pill-hp' : f.machine === 'cb' ? 'pill-cb' : 'pill-warn'
