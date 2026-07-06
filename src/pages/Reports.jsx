@@ -479,13 +479,13 @@ export default function Reports({ fills }) {
       {filtered.length > 0 && (
         <div style={{ textAlign: 'center', marginTop: '8px', marginBottom: '24px' }}>
           <button onClick={() => {
-            const rows = [['Date','Shift Day','Shift Type','Employee','Machine','Vehicle','Litres','Amount','Discount','Final','Payment','Split Cash','Split GPay']];
+            const rows = [['Date','Shift Day','Shift Type','Employee','Bill','Machine','Vehicle','Litres','Amount','Discount','Final','Payment','Split Cash','Split GPay']];
             filtered.forEach(f => {
               rows.push([
                 new Date(f.ts).toLocaleDateString('en-IN'),
                 fmtDay(getShiftDay(f.ts)),
                 getShiftType(f.ts) === 'morning' ? 'Morning' : 'Night',
-                f.employee, f.machine, f.vehicle, fmt(f.litres), f.actual, f.discount||0, f.final, f.payment, f.split_cash||0, f.split_gpay||0
+                f.employee, f.bill_type ? ((f.bill_type || 'gst') === 'gst' ? 'GST bill' : 'non GST') : '', f.machine, f.vehicle, fmt(f.litres), f.actual, f.discount||0, f.final, f.payment, f.split_cash||0, f.split_gpay||0
               ]);
             });
             const csv = rows.map(r => r.join(',')).join('\n');
