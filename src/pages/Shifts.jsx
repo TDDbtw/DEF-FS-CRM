@@ -207,6 +207,12 @@ export default function Shifts({ currentUser, triggerToast }) {
               </div>
             )}
 
+            {(pair.start?.notes || pair.end?.notes) && (
+              <div style={{ fontSize: '11px', color: 'var(--text-2)', marginBottom: '10px', padding: '6px 10px', background: 'var(--bg)', borderRadius: '6px', fontStyle: 'italic' }}>
+                Notes: {pair.end?.notes || pair.start?.notes}
+              </div>
+            )}
+
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
               {machineList.map(m => {
                 const startVal = pair.start?.[`tot_${m.id}`];
