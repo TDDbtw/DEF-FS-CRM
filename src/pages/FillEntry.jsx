@@ -22,6 +22,7 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
   const [splitCash, setSplitCash] = useState('');
   const [splitGpay, setSplitGpay] = useState('');
   const [notes, setNotes] = useState('');
+  const [billType, setBillType] = useState('');
 
   // Autocomplete state
   const [acOpen, setAcOpen] = useState(false);
@@ -215,11 +216,12 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
       litres: parseFloat(litres),
       actual: entryType === 'test' ? 0 : actualVal,
       discount: entryType === 'test' ? 0 : discVal,
-      final: entryType === 'test' ? 0 : collectVal,
+      final: entryType === 'test' ? 0 : (payment === 'GPay + Cash Discount' ? actualVal : collectVal),
       payment: entryType === 'test' ? null : payment,
       split_cash: entryType === 'test' ? null : (payment === 'Cash + GPay' || payment === 'GPay + Cash Discount' ? (parseFloat(splitCash) || 0) : null),
       split_gpay: entryType === 'test' ? null : (payment === 'Cash + GPay' ? (parseFloat(splitGpay) || 0) : payment === 'GPay + Cash Discount' ? actualVal : null),
       shift: 'Mid-shift fill',
+      bill_type: entryType === 'sale' ? (billType || null) : null,
       notes: notes.trim() || null
     };
 
@@ -251,6 +253,7 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
     setSplitCash('');
     setSplitGpay('');
     setNotes('');
+    setBillType('');
     setDiscManualEdited(false);
     setActualManualEdited(false);
     clearAutofill();
@@ -438,6 +441,25 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
                   </button>
                 );
               })}
+            </div>
+          </div>
+          )}
+          {entryType === 'sale' && (
+          <div style={{ marginBottom: '14px' }}>
+            <div style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>Bill Type</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+              {[['gst', 'GST Bill'], ['non-gst', 'Non-GST Bill']].map(([v, label]) => (
+                <button key={v} type="button" onClick={() => setBillType(billType === v ? '' : v)} style={{
+                  padding: '8px 0', textAlign: 'center', fontSize: '12px', fontWeight: '500',
+                  border: `1.5px solid ${billType === v ? 'var(--green)' : 'var(--border-mid)'}`,
+                  borderRadius: 'var(--radius)', cursor: 'pointer',
+                  background: billType === v ? 'var(--green-soft)' : 'var(--surface)',
+                  color: billType === v ? 'var(--green)' : 'var(--text-2)',
+                  transition: 'all .15s'
+                }}>
+                  {label}
+                </button>
+              ))}
             </div>
           </div>
           )}
