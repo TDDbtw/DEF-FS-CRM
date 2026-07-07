@@ -3,7 +3,7 @@ import { MACHINES } from '../config/machines';
 import { dbAPI } from '../config/supabase';
 import { Search, RotateCcw } from 'lucide-react';
 
-export default function FillEntry({ currentUser, triggerToast, refreshData, customers, fills }) {
+export default function FillEntry({ currentUser, triggerToast, refreshData, customers, fills, overrides }) {
   const [selectedMachine, setSelectedMachine] = useState('hp');
   
   // Form Fields
@@ -46,25 +46,44 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Update calculations when litres or actual changes
+  // ── Pricing Override Helpers ──
   const L = parseFloat(litres) || 0;
   const currentMachine = MACHINES[selectedMachine];
 
-  // Auto calculate actual amount (GST-inclusive) and discount if needed
+  const findOverride = (field) => {
+    if (!overrides) return null;
+    const normalizedCompany = (company || '').trim().toLowerCase();
+    const normalizedVehicle = (vehicle || '').trim().toUpperCase();
+    for (const o of overrides) {
+      if (o.field !== field) continue;
+      if (o.machine && o.machine !== 'all' && o.machine !== selectedMachine) continue;
+      const target = o.target_value.trim();
+      if (o.target_type === 'company' && target.toLowerCase() === normalizedCompany) return o;
+      if (o.target_type === 'vehicle' && target.toUpperCase() === normalizedVehicle) return o;
+    }
+    return null;
+  };
+
+  const rateOverride = findOverride('rate');
+  const discountOverride = findOverride('discount');
+
+  // Update calculations when litres changes or selectedMachine changes or an override applies
   useEffect(() => {
     if (L > 0) {
       if (!actualManualEdited) {
-        setActual(Math.round(L * currentMachine.rate).toString());
+        const effectiveRate = rateOverride ? rateOverride.value : currentMachine.rate;
+        setActual(Math.round(L * effectiveRate).toString());
       }
       if (!discManualEdited) {
-        setDiscount(Math.round(L).toString());
+        const effectiveDiscPerL = discountOverride ? discountOverride.value : 1;
+        setDiscount(Math.round(L * effectiveDiscPerL).toString());
       }
     } else {
       if (!discManualEdited) {
         setDiscount('');
       }
     }
-  }, [litres, selectedMachine]);
+  }, [litres, selectedMachine, vehicle, company]);
 
   // Sync split fields when actual changes for split payment types
   useEffect(() => {
@@ -546,6 +565,13 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
               const collectVal = Math.max(0, actualVal - discVal);
               return (
               <div className="summary-box">
+                {(rateOverride || discountOverride) && (
+                  <div style={{ fontSize: '11px', color: 'var(--cb)', fontWeight: 600, marginBottom: '8px' }}>
+                    {rateOverride && `${rateOverride.target_value}: ₹${rateOverride.value}/L rate`}
+                    {rateOverride && discountOverride && ' · '}
+                    {discountOverride && `${discountOverride.target_value}: ₹${discountOverride.value}/L discount`}
+                  </div>
+                )}
                 <div className="sum-row">
                   <span className="sum-label">Taxable amount</span>
                   <span className="sum-val">{L > 0 ? `₹${taxableAmount.toFixed(2)}` : '—'}</span>

@@ -12,6 +12,7 @@ import Alerts from './pages/Alerts';
 import Dashboard from './pages/Dashboard';
 import Reports from './pages/Reports';
 import Shifts from './pages/Shifts';
+import Pricing from './pages/Pricing';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -20,6 +21,7 @@ export default function App() {
   // App global state loaded from API
   const [customers, setCustomers] = useState([]);
   const [fills, setFills] = useState([]);
+  const [overrides, setOverrides] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Active navigation view state
@@ -83,16 +85,19 @@ export default function App() {
     if (!currentUser) return;
     setLoading(true);
     try {
-      const [custRes, fillRes] = await Promise.all([
+      const [custRes, fillRes, overridesRes] = await Promise.all([
         dbAPI.fetchCustomers(),
-        dbAPI.fetchFills()
+        dbAPI.fetchFills(),
+        dbAPI.fetchOverrides(),
       ]);
 
       if (custRes.error) console.error('Error fetching customers:', custRes.error);
       if (fillRes.error) console.error('Error fetching fills:', fillRes.error);
+      if (overridesRes.error) console.error('Error fetching overrides:', overridesRes.error);
 
       setCustomers(custRes.data || []);
       setFills(fillRes.data || []);
+      setOverrides(overridesRes.data || []);
     } catch (e) {
       console.error('Error loading datasets:', e);
     } finally {
@@ -176,6 +181,7 @@ export default function App() {
             refreshData={loadData}
             customers={customers}
             fills={fills}
+            overrides={overrides}
           />
         );
       case 'customers':
@@ -197,10 +203,12 @@ export default function App() {
         return <Reports fills={fills} />;
       case 'shifts':
         return <Shifts currentUser={currentUser} triggerToast={triggerToast} />;
+      case 'pricing':
+        return <Pricing overrides={overrides} customers={customers} triggerToast={triggerToast} refreshData={loadData} />;
       default:
         return currentUser?.role === 'office' 
           ? <Dashboard customers={customers} fills={fills} />
-          : <FillEntry currentUser={currentUser} triggerToast={triggerToast} refreshData={loadData} customers={customers} fills={fills} />;
+          : <FillEntry currentUser={currentUser} triggerToast={triggerToast} refreshData={loadData} customers={customers} fills={fills} overrides={overrides} />;
     }
   };
 

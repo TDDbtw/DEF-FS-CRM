@@ -27,9 +27,9 @@ export default function AuthScreen({ onLoginSuccess }) {
     setError('');
 
     const userEmails = {
-      basil: import.meta.env.VITE_EMAIL_BASIL || 'basil@gmail.com',
-      bhagavathi: import.meta.env.VITE_EMAIL_BHAGAVATHI || 'bhagavathi@gmail.com',
-      office: import.meta.env.VITE_EMAIL_OFFICE || 'office@gmail.com'
+      basil: import.meta.env.VITE_EMAIL_BASIL ,
+      bhagavathi: import.meta.env.VITE_EMAIL_BHAGAVATHI, 
+      office: import.meta.env.VITE_EMAIL_OFFICE 
     };
     const displayName = matchedName.charAt(0).toUpperCase() + matchedName.slice(1);
     const email = userEmails[matchedName];

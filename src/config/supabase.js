@@ -99,4 +99,28 @@ export const dbAPI = {
       .select();
     return { data, error };
   },
+
+  fetchOverrides: async () => {
+    const { data, error } = await supabase
+      .from('pricing_overrides')
+      .select('*')
+      .order('created_at', { ascending: false });
+    return { data, error };
+  },
+
+  addOverride: async (override) => {
+    const { data, error } = await supabase
+      .from('pricing_overrides')
+      .insert([override])
+      .select();
+    return { data, error };
+  },
+
+  deleteOverride: async (id) => {
+    const { data, error } = await supabase
+      .from('pricing_overrides')
+      .delete()
+      .eq('id', id);
+    return { data, error };
+  },
 };
