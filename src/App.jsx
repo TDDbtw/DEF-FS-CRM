@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { dbAPI } from './config/supabase';
 import Layout from './components/Layout';
 import AuthScreen from './components/AuthScreen';
@@ -25,8 +25,25 @@ export default function App() {
   // Active navigation view state
   const officeEmail = import.meta.env.VITE_EMAIL_OFFICE || 'office@gmail.com';
 
-  // Determine role from email
-  const getUserRole = (email) => email?.toLowerCase() === officeEmail?.toLowerCase() ? 'office' : 'admin';
+  // Determine role: prefer user_metadata (set in Supabase dashboard), fallback to email
+  const getUserRole = (userOrEmail) => {
+    if (typeof userOrEmail === 'object' && userOrEmail?.user_metadata?.role) {
+      return userOrEmail.user_metadata.role;
+    }
+    const email = typeof userOrEmail === 'string' ? userOrEmail : (userOrEmail?.email || '');
+    return email?.toLowerCase() === officeEmail?.toLowerCase() ? 'office' : 'admin';
+  };
+
+  const displayNames = {
+    [import.meta.env.VITE_EMAIL_BASIL?.toLowerCase()]: 'Basil',
+    [import.meta.env.VITE_EMAIL_BHAGAVATHI?.toLowerCase()]: 'Bhagavathi',
+    [import.meta.env.VITE_EMAIL_OFFICE?.toLowerCase()]: 'Office',
+  };
+
+  const getUserDisplayName = (email) => {
+    if (!email) return 'User';
+    return displayNames[email.toLowerCase()] || email.split('@')[0];
+  };
 
   const [activePage, setActivePage] = useState(null);
 
@@ -39,21 +56,21 @@ export default function App() {
     const checkAuth = async () => {
       const { data } = await dbAPI.getCurrentUser();
       if (data.user) {
-        // Load stored employee session
+        // Restore full session from localStorage if available (preserves display name)
         const stored = localStorage.getItem('gloe_session_user');
         if (stored) {
           const session = JSON.parse(stored);
-          // Ensure role is set (backward compat)
-          if (!session.role) session.role = getUserRole(session.email);
+          session.role = getUserRole(session.email);
           setCurrentUser(session);
           setActivePage(session.role === 'office' ? 'dashboard' : 'fill');
         } else {
+          const role = getUserRole(data.user);
           setCurrentUser({
-            name: data.user.user_metadata?.display_name || data.user.email.split('@')[0],
+            name: getUserDisplayName(data.user.email),
             email: data.user.email,
-            role: getUserRole(data.user.email)
+            role,
           });
-          setActivePage('fill');
+          setActivePage(role === 'office' ? 'dashboard' : 'fill');
         }
       }
       setAuthChecked(true);
