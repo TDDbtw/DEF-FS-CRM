@@ -66,6 +66,21 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
 
   const rateOverride = findOverride('rate');
   const discountOverride = findOverride('discount');
+  const billTypeOverride = findOverride('bill_type');
+
+  // Auto-apply bill type override
+  useEffect(() => {
+    if (billTypeOverride) {
+      setBillType(billTypeOverride.value === 'gst' ? 'gst' : 'non-gst');
+    }
+  }, [billTypeOverride]);
+
+  // Reset manual-edit flag when rate override activates (forces discount to 0)
+  useEffect(() => {
+    if (rateOverride && !discountOverride) {
+      setDiscManualEdited(false);
+    }
+  }, [rateOverride, discountOverride]);
 
   // Update calculations when litres changes or selectedMachine changes or an override applies
   useEffect(() => {
@@ -75,8 +90,15 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
         setActual(Math.round(L * effectiveRate).toString());
       }
       if (!discManualEdited) {
-        const effectiveDiscPerL = discountOverride ? discountOverride.value : 1;
-        setDiscount(Math.round(L * effectiveDiscPerL).toString());
+        let effectiveDiscPerL;
+        if (discountOverride) {
+          effectiveDiscPerL = discountOverride.value;
+        } else if (rateOverride) {
+          effectiveDiscPerL = 0; // reduced rate already includes discount
+        } else {
+          effectiveDiscPerL = 1;
+        }
+        setDiscount(effectiveDiscPerL === 0 ? '0' : Math.round(L * effectiveDiscPerL).toString());
       }
     } else {
       if (!discManualEdited) {
@@ -540,8 +562,9 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
                     type="number"
                     value={discount}
                     onChange={(e) => handleDiscChange(e.target.value)}
-                    placeholder="₹ 0"
-                    style={{ flex: 1 }}
+                    placeholder={rateOverride && !discountOverride ? '₹ 0 (reduced rate)' : '₹ 0'}
+                    disabled={!!(rateOverride && !discountOverride)}
+                    style={{ flex: 1, opacity: rateOverride && !discountOverride ? 0.5 : 1 }}
                   />
                   <button 
                     type="button" 
@@ -565,11 +588,13 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
               const collectVal = Math.max(0, actualVal - discVal);
               return (
               <div className="summary-box">
-                {(rateOverride || discountOverride) && (
+                {(rateOverride || discountOverride || billTypeOverride) && (
                   <div style={{ fontSize: '11px', color: 'var(--cb)', fontWeight: 600, marginBottom: '8px' }}>
                     {rateOverride && `${rateOverride.target_value}: ₹${rateOverride.value}/L rate`}
-                    {rateOverride && discountOverride && ' · '}
+                    {(rateOverride && discountOverride) || (rateOverride && billTypeOverride) ? ' · ' : ''}
                     {discountOverride && `${discountOverride.target_value}: ₹${discountOverride.value}/L discount`}
+                    {discountOverride && billTypeOverride ? ' · ' : ''}
+                    {billTypeOverride && `${billTypeOverride.target_value}: ${billTypeOverride.value === 'gst' ? 'GST' : 'Non-GST'} bill`}
                   </div>
                 )}
                 <div className="sum-row">

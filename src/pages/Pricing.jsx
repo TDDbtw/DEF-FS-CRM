@@ -71,7 +71,7 @@ export default function Pricing({ overrides = [], customers = [], triggerToast, 
       target_value: targetValue.trim(),
       field,
       machine: machine === 'all' ? null : machine,
-      value: Number(value),
+      value: field === 'bill_type' ? value : Number(value),
     };
     const { error } = await dbAPI.addOverride(payload);
     if (error) {
@@ -144,9 +144,11 @@ export default function Pricing({ overrides = [], customers = [], triggerToast, 
                           </div>
                         )}
                       </td>
-                      <td><span className={`badge ${o.field === 'rate' ? 'badge-hp' : 'badge-cb'}`}>{o.field}</span></td>
+                      <td><span className={`badge ${o.field === 'rate' ? 'badge-hp' : o.field === 'discount' ? 'badge-cb' : 'badge-ok'}`}>{o.field === 'bill_type' ? 'bill' : o.field}</span></td>
                       <td>{o.machine ? <span className={`badge ${MACHINES[o.machine]?.badgeColor || 'badge-grey'}`}>{MACHINES[o.machine]?.name || o.machine}</span> : <span className="badge badge-grey">All</span>}</td>
-                      <td style={{ fontWeight: 600, color: 'var(--green)' }}>₹{o.value}{o.field === 'rate' ? '/L' : '/L'}</td>
+                      <td style={{ fontWeight: 600, color: 'var(--green)' }}>
+                        {o.field === 'bill_type' ? (o.value === 'gst' ? 'GST' : 'Non-GST') : `₹${o.value}/L`}
+                      </td>
                       <td>
                         <button className="btn btn-sm btn-outline" onClick={() => handleDelete(o.id)}
                           style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }}>
@@ -207,9 +209,11 @@ export default function Pricing({ overrides = [], customers = [], triggerToast, 
             <div style={{ marginBottom: '6px', fontSize: '12px', fontWeight: 500, color: 'var(--text-2)' }}>Field</div>
             <div className="tabs" style={{ marginBottom: 0 }}>
               <button type="button" className={`tab ${field === 'rate' ? 'active' : ''}`}
-                onClick={() => setField('rate')}>Rate (₹/L)</button>
+                onClick={() => { setField('rate'); setValue(''); }}>Rate (₹/L)</button>
               <button type="button" className={`tab ${field === 'discount' ? 'active' : ''}`}
-                onClick={() => setField('discount')}>Discount (₹/L)</button>
+                onClick={() => { setField('discount'); setValue(''); }}>Discount (₹/L)</button>
+              <button type="button" className={`tab ${field === 'bill_type' ? 'active' : ''}`}
+                onClick={() => { setField('bill_type'); setValue('gst'); }}>Bill Type</button>
             </div>
           </div>
 
@@ -231,11 +235,20 @@ export default function Pricing({ overrides = [], customers = [], triggerToast, 
 
           <div>
             <div style={{ marginBottom: '6px', fontSize: '12px', fontWeight: 500, color: 'var(--text-2)' }}>
-              Override Value (₹/litre)
+              {field === 'bill_type' ? 'Bill Type' : 'Override Value (₹/litre)'}
             </div>
-            <input type="number" step="0.01" min="0" value={value} onChange={(e) => setValue(e.target.value)}
-              placeholder={field === 'rate' ? 'e.g. 63' : 'e.g. 2'}
-              style={styles.input} />
+            {field === 'bill_type' ? (
+              <div className="tabs" style={{ marginBottom: 0 }}>
+                <button type="button" className={`tab ${value === 'gst' ? 'active' : ''}`}
+                  onClick={() => setValue('gst')}>GST Bill</button>
+                <button type="button" className={`tab ${value === 'non-gst' ? 'active' : ''}`}
+                  onClick={() => setValue('non-gst')}>Non-GST Bill</button>
+              </div>
+            ) : (
+              <input type="number" step="0.01" min="0" value={value} onChange={(e) => setValue(e.target.value)}
+                placeholder={field === 'rate' ? 'e.g. 63' : 'e.g. 2'}
+                style={styles.input} />
+            )}
           </div>
 
           <button type="submit" className="btn btn-primary" style={{ marginTop: '4px' }}>
