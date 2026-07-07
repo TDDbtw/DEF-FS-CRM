@@ -85,6 +85,11 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
   const handleVehInput = (val) => {
     const v = val.toUpperCase();
     setVehicle(v);
+
+    const prefix = v.slice(0, 2);
+    if (prefix === 'KL') setState('Kerala');
+    else if (prefix === 'KA') setState('Karnataka');
+    else if (prefix === 'TN') setState('Tamil Nadu');
     
     if (v.length < 2) {
       setAcOpen(false);
