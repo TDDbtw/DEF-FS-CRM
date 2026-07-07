@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Download, Calendar, ArrowUpDown, X } from 'lucide-react';
+import { useState } from 'react';
+import { Download, Calendar, X } from 'lucide-react';
 import { MACHINES } from '../config/machines';
 
 const getShiftType = (ts) => {

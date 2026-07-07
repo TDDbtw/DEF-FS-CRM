@@ -270,12 +270,6 @@ body {
   gap: 12px; 
 }
 
-.form-row-3 { 
-  display: grid; 
-  grid-template-columns: 1fr 1fr 1fr; 
-  gap: 12px; 
-}
-
 .fg { 
   display: flex; 
   flex-direction: column; 
@@ -418,7 +412,6 @@ select {
   font-weight: 500; 
 }
 
-.badge-hp { background: var(--hp-soft); color: var(--hp); }
 .badge-cb { background: var(--cb-soft); color: var(--cb); }
 .badge-warn { background: var(--warn-soft); color: var(--warn); }
 .badge-ok { background: var(--ok-soft); color: var(--ok); }
@@ -560,7 +553,6 @@ tr:hover td {
 }
 
 .dot-hp { background: var(--hp); }
-.dot-cb { background: var(--cb); }
 .dot-warn { background: var(--warn); }
 .dot-ok { background: var(--ok); }
 
@@ -813,7 +805,7 @@ tr:hover td {
     grid-template-columns: 1fr !important;
   }
   
-  .form-row, .form-row-3 { 
-    grid-template-columns: 1fr; 
+  .form-row {
+    grid-template-columns: 1fr;
   }
 }

@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { MACHINES } from '../config/machines';
-import { Filter, Download, TrendingUp, Fuel, Users, CreditCard, DollarSign, Sun, Moon } from 'lucide-react';
+import { Filter, Download, TrendingUp, Fuel, Users, CreditCard, DollarSign, Sun } from 'lucide-react';
 
 const machineList = Object.values(MACHINES);
 

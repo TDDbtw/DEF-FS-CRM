@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { dbAPI } from '../config/supabase';
 import Modal from '../components/Modal';
 import { MACHINES } from '../config/machines';
-import { Search, Plus, MapPin, Phone, MessageSquare, BookOpen, Calendar, HelpCircle } from 'lucide-react';
+import { Search, Plus, MapPin, Phone, BookOpen, Calendar, HelpCircle } from 'lucide-react';
 
 export default function Customers({ customers, fills, triggerToast, refreshData }) {
   const [activeTab, setActiveTab] = useState('all'); // all, active, at-risk, churned

@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Fuel, Users, ClipboardList, Bell, BarChart3, FileText, Clock, LogOut, Menu, X } from 'lucide-react';
-import { isMockMode } from '../config/supabase';
+
 
 export default function Layout({ 
   children, 
@@ -71,9 +71,6 @@ export default function Layout({
         <div className="sidebar-brand">
           <div className="brand-name">Green Land &<br />Ocean Blue Energy</div>
           <div className="brand-sub">Shenkottai, Tenkasi</div>
-          {isMockMode && (
-            <div style={styles.demoBadge}>OFFLINE DEMO</div>
-          )}
         </div>
 
         <nav className="sidebar-nav" style={styles.nav}>
@@ -159,19 +156,6 @@ const styles = {
   },
   sidebar: {
     zIndex: 160,
-  },
-  demoBadge: {
-    display: 'inline-block',
-    background: 'var(--warn-soft)',
-    color: 'var(--warn)',
-    border: '1px solid #fcd34d',
-    borderRadius: '4px',
-    fontSize: '9px',
-    fontWeight: '600',
-    padding: '2px 6px',
-    marginTop: '6px',
-    textAlign: 'center',
-    width: 'fit-content',
   },
   nav: {
     display: 'flex',

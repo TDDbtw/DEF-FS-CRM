@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { dbAPI } from '../config/supabase';
 import { MACHINES } from '../config/machines';
-import { Clock, Play, Square } from 'lucide-react';
+import { Play, Square } from 'lucide-react';
 
 const machineList = Object.values(MACHINES);
 

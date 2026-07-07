@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { MACHINES } from '../config/machines';
 import { dbAPI } from '../config/supabase';
-import { Check, Search, RotateCcw } from 'lucide-react';
+import { Search, RotateCcw } from 'lucide-react';
 
 export default function FillEntry({ currentUser, triggerToast, refreshData, customers, fills }) {
   const [selectedMachine, setSelectedMachine] = useState('hp');
@@ -79,9 +79,6 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
 
   // Derive GST breakdown from the actual amount
   const actualVal = parseFloat(actual) || 0;
-  const taxableAmount = actualVal > 0 ? Math.round(actualVal / 1.18 * 100) / 100 : 0;
-  const cgst = Math.round(taxableAmount * 0.09 * 100) / 100;
-  const sgst = Math.round(taxableAmount * 0.09 * 100) / 100;
   const discVal = parseFloat(discount) || 0;
   const collectVal = Math.max(0, actualVal - discVal);
 
