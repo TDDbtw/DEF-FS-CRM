@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { MessageSquare, Phone, AlertTriangle, AlertCircle, CheckCircle, ArrowUpDown, Calendar, BookOpen, MapPin, HelpCircle } from 'lucide-react';
 import Modal from '../components/Modal';
 import { MACHINES } from '../config/machines';

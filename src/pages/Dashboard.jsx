@@ -1,6 +1,4 @@
-import React from 'react';
 import { MACHINES } from '../config/machines';
-import { Fuel, TrendingUp, AlertTriangle, IndianRupee } from 'lucide-react';
 
 export default function Dashboard({ customers, fills }) {
   // Compute date boundary for today
