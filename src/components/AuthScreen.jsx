@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { dbAPI } from '../config/supabase';
 import { Fuel, Lock, ArrowLeft } from 'lucide-react';
+import { EMPLOYEE_NAMES, BUSINESS_NAME, BUSINESS_LOCATION } from '../config/constants';
 
 export default function AuthScreen({ onLoginSuccess }) {
   const [employeeName, setEmployeeName] = useState('');
@@ -9,7 +10,7 @@ export default function AuthScreen({ onLoginSuccess }) {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const validNames = ['basil', 'bhagavathi', 'office'];
+  const validNames = EMPLOYEE_NAMES.map(n => n.toLowerCase());
   const matchedName = validNames.find(n => n === employeeName.trim().toLowerCase());
 
   const handleLogin = async (e) => {
@@ -68,8 +69,8 @@ export default function AuthScreen({ onLoginSuccess }) {
           <div style={styles.logoCircle}>
             <Fuel size={28} color="var(--green)" />
           </div>
-          <h1 style={styles.brandTitle}>Green Land &<br />Ocean Blue Energy</h1>
-          <p style={styles.brandSub}>Shenkottai, Tenkasi</p>
+          <h1 style={styles.brandTitle}>{BUSINESS_NAME.replace(' & ', ' &<br />')}</h1>
+          <p style={styles.brandSub}>{BUSINESS_LOCATION}</p>
         </div>
 
         {showPassword ? (
@@ -87,7 +88,7 @@ export default function AuthScreen({ onLoginSuccess }) {
               <div style={styles.inputWrapper}>
                 <input
                   type="text"
-                  placeholder="Type your name — Basil, Bhagavathi, Office"
+                  placeholder={`Type your name — ${EMPLOYEE_NAMES.join(', ')}`}
                   value={employeeName}
                   onChange={(e) => { setEmployeeName(e.target.value); setError(''); setPassword(''); }}
                   style={{ ...styles.input, paddingLeft: '12px', textTransform: 'capitalize' }}
@@ -126,7 +127,7 @@ export default function AuthScreen({ onLoginSuccess }) {
             )}
             {employeeName && !matchedName && (
               <div style={{ fontSize: '12px', color: 'var(--text-3)', marginTop: '4px' }}>
-                Not recognized. Try: Basil, Bhagavathi, or Office
+                Not recognized. Try: {EMPLOYEE_NAMES.join(', ')}
               </div>
             )}
           </form>

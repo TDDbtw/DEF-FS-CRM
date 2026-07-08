@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { MessageSquare, Phone, AlertTriangle, AlertCircle, CheckCircle, ArrowUpDown, Calendar, BookOpen, MapPin, HelpCircle } from 'lucide-react';
 import Modal from '../components/Modal';
 import { MACHINES } from '../config/machines';
+import { ACTIVE_DAYS, AT_RISK_DAYS, BUSINESS_NAME, BUSINESS_LOCATION } from '../config/constants';
 
 export default function Alerts({ customers, fills }) {
   const [sortBy, setSortBy] = useState('days');
@@ -14,9 +15,6 @@ export default function Alerts({ customers, fills }) {
     setSelectedCust(cust);
     setDetailModalOpen(true);
   };
-
-  const activeDays = Number(import.meta.env.VITE_ACTIVE_DAYS) || 21;
-  const atRiskDays = Number(import.meta.env.VITE_ATRISK_DAYS) || 45;
 
   const getCustomerStatus = (cust) => {
     const custFills = fills
@@ -32,7 +30,7 @@ export default function Alerts({ customers, fills }) {
     const days = Math.floor(diffMs / 86400000);
     
     return {
-      status: days <= activeDays ? 'active' : days <= atRiskDays ? 'at-risk' : 'churned',
+      status: days <= ACTIVE_DAYS ? 'active' : days <= AT_RISK_DAYS ? 'at-risk' : 'churned',
       daysSince: days,
       fillCount: custFills.length,
       totalLitres: custFills.reduce((sum, f) => sum + (f.litres || 0), 0)
@@ -60,7 +58,7 @@ export default function Alerts({ customers, fills }) {
   const getWhatsAppLink = (c, daysSince) => {
     const ph = c.phone || c.co_phone || '';
     if (!ph) return '';
-    const message = encodeURIComponent(`Hi ${c.name}, this is Green Land & Ocean Blue Energy (Shenkottai). It's been a while since your last visit — hope all is well. Do stop by when you need DEF/AdBlue for your vehicles. We're open daily. Thank you!`);
+    const message = encodeURIComponent(`Hi ${c.name}, this is ${BUSINESS_NAME} (${BUSINESS_LOCATION}). It's been a while since your last visit — hope all is well. Do stop by when you need DEF/AdBlue for your vehicles. We're open daily. Thank you!`);
     return `https://wa.me/91${ph}?text=${message}`;
   };
 
@@ -165,7 +163,7 @@ export default function Alerts({ customers, fills }) {
                 }}
               >
                 <AlertCircle size={16} style={{ marginRight: '8px' }} />
-                <strong>Inactive:</strong> {churned.length} customer{churned.length > 1 ? 's have' : ' has'} not filled in over {atRiskDays} days.
+                <strong>Inactive:</strong> {churned.length} customer{churned.length > 1 ? 's have' : ' has'} not filled in over {AT_RISK_DAYS} days.
               </div>
               <div>
                 {paginate(sortCustomers(churned)).map(c => renderAlertCard(c, 'churned'))}
@@ -191,7 +189,7 @@ export default function Alerts({ customers, fills }) {
                 }}
               >
                 <AlertTriangle size={16} style={{ marginRight: '8px' }} />
-                <strong>At Risk:</strong> {atRisk.length} customer{atRisk.length > 1 ? 's are' : ' is'} at risk ({activeDays}–{atRiskDays} days since last visit).
+                <strong>At Risk:</strong> {atRisk.length} customer{atRisk.length > 1 ? 's are' : ' is'} at risk ({ACTIVE_DAYS}–{AT_RISK_DAYS} days since last visit).
               </div>
               <div>
                 {paginate(sortCustomers(atRisk)).map(c => renderAlertCard(c, 'at-risk'))}

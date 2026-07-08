@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Fuel, Users, ClipboardList, Bell, BarChart3, FileText, Clock, LogOut, Menu, X, Tag } from 'lucide-react';
+import { BUSINESS_NAME, BUSINESS_LOCATION } from '../config/constants';
 
 
 export default function Layout({ 
@@ -71,8 +72,8 @@ export default function Layout({
         display: mobileMenuOpen ? 'flex' : undefined
       }}>
         <div className="sidebar-brand">
-          <div className="brand-name">Green Land &<br />Ocean Blue Energy</div>
-          <div className="brand-sub">Shenkottai, Tenkasi</div>
+          <div className="brand-name">{BUSINESS_NAME.replace(' & ', ' &<br />')}</div>
+          <div className="brand-sub">{BUSINESS_LOCATION}</div>
         </div>
 
         <nav className="sidebar-nav" style={styles.nav}>

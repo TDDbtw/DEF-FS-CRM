@@ -1,17 +1,18 @@
 import React, { useState, useMemo } from 'react';
 import { MACHINES } from '../config/machines';
 import { Filter, Download, TrendingUp, Fuel, Users, CreditCard, DollarSign, Sun } from 'lucide-react';
+import { SHIFT_START, SHIFT_END } from '../config/constants';
 
 const machineList = Object.values(MACHINES);
 
 const getShiftType = (ts) => {
   const h = new Date(ts).getHours();
-  return h >= 9 && h < 21 ? 'morning' : 'night';
+  return h >= SHIFT_START && h < SHIFT_END ? 'morning' : 'night';
 };
 
 const getShiftDay = (ts) => {
   const d = new Date(ts);
-  if (d.getHours() < 9) d.setDate(d.getDate() - 1);
+  if (d.getHours() < SHIFT_START) d.setDate(d.getDate() - 1);
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');

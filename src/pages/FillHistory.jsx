@@ -1,15 +1,16 @@
 import { useState } from 'react';
 import { Download, Calendar, X } from 'lucide-react';
 import { MACHINES } from '../config/machines';
+import { SHIFT_START, SHIFT_END, EMPLOYEE_INITIALS } from '../config/constants';
 
 const getShiftType = (ts) => {
   const h = new Date(ts).getHours();
-  return h >= 9 && h < 21 ? 'morning' : 'night';
+  return h >= SHIFT_START && h < SHIFT_END ? 'morning' : 'night';
 };
 
 const getShiftDay = (ts) => {
   const d = new Date(ts);
-  if (d.getHours() < 9) d.setDate(d.getDate() - 1);
+  if (d.getHours() < SHIFT_START) d.setDate(d.getDate() - 1);
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
@@ -120,7 +121,7 @@ export default function FillHistory({ fills }) {
           ' ',
           f.payment =='Cash + GPay' ? 'C+GPAY': f.payment,
           f.payment =='Cash + GPay' ? `${f.split_cash} + ${f.split_gpay}` : '',
-          f.employee =='Basil'?"MB":"BH",
+          EMPLOYEE_INITIALS[f.employee?.toLowerCase()] || f.employee,
           f.bill_type ? ((f.bill_type || 'gst') === 'gst' ? 'GST bill' : 'non GST') : '',
           f.discount,
           f.split_cash || '',

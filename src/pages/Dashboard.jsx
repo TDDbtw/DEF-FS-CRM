@@ -1,4 +1,5 @@
 import { MACHINES } from '../config/machines';
+import { ACTIVE_DAYS } from '../config/constants';
 
 export default function Dashboard({ customers, fills }) {
   // Compute date boundary for today
@@ -17,7 +18,7 @@ export default function Dashboard({ customers, fills }) {
       const lastFill = custFills[0];
       const diffMs = Date.now() - new Date(lastFill.ts).getTime();
       const days = Math.floor(diffMs / 86400000);
-      return days > 21; // either at-risk or churned
+      return days > ACTIVE_DAYS;
     }).length;
   };
 

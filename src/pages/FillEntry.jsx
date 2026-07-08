@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { MACHINES } from '../config/machines';
 import { dbAPI } from '../config/supabase';
 import { Search, RotateCcw } from 'lucide-react';
+import { GST_MULTIPLIER, GST_HALF, GST_RATE, STATES } from '../config/constants';
 
 export default function FillEntry({ currentUser, triggerToast, refreshData, customers, fills, overrides }) {
   const [selectedMachine, setSelectedMachine] = useState('hp');
@@ -459,9 +460,7 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
               <div className="fg">
                 <label>State</label>
                 <select value={state} onChange={(e) => setState(e.target.value)}>
-                  <option value="Tamil Nadu">Tamil Nadu</option>
-                  <option value="Kerala">Kerala</option>
-                  <option value="Other">Other</option>
+                  {STATES.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
             </div>
@@ -581,9 +580,9 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
 
             {entryType === 'sale' && (() => {
               const actualVal = parseFloat(actual) || 0;
-              const taxableAmount = actualVal > 0 ? Math.round(actualVal / 1.18 * 100) / 100 : 0;
-              const cgst = Math.round(taxableAmount * 0.09 * 100) / 100;
-              const sgst = Math.round(taxableAmount * 0.09 * 100) / 100;
+              const taxableAmount = actualVal > 0 ? Math.round(actualVal / GST_MULTIPLIER * 100) / 100 : 0;
+              const cgst = Math.round(taxableAmount * GST_HALF * 100) / 100;
+              const sgst = Math.round(taxableAmount * GST_HALF * 100) / 100;
               const discVal = parseFloat(discount) || 0;
               const collectVal = Math.max(0, actualVal - discVal);
               return (
@@ -602,11 +601,11 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
                   <span className="sum-val">{L > 0 ? `₹${taxableAmount.toFixed(2)}` : '—'}</span>
                 </div>
                 <div className="sum-row" style={{ fontSize: '11px' }}>
-                  <span className="sum-label">CGST (9%)</span>
+                  <span className="sum-label">CGST ({GST_RATE/2}%)</span>
                   <span className="sum-val" style={{ color: 'var(--text-2)' }}>{L > 0 ? `₹${cgst.toFixed(2)}` : '—'}</span>
                 </div>
                 <div className="sum-row" style={{ fontSize: '11px' }}>
-                  <span className="sum-label">SGST (9%)</span>
+                  <span className="sum-label">SGST ({GST_RATE/2}%)</span>
                   <span className="sum-val" style={{ color: 'var(--text-2)' }}>{L > 0 ? `₹${sgst.toFixed(2)}` : '—'}</span>
                 </div>
                 <div className="sum-row">

@@ -3,6 +3,7 @@ import { dbAPI } from '../config/supabase';
 import Modal from '../components/Modal';
 import { MACHINES } from '../config/machines';
 import { Search, Plus, MapPin, Phone, BookOpen, Calendar, HelpCircle } from 'lucide-react';
+import { STATES, ACTIVE_DAYS, AT_RISK_DAYS } from '../config/constants';
 
 export default function Customers({ customers, fills, triggerToast, refreshData }) {
   const [activeTab, setActiveTab] = useState('all'); // all, active, at-risk, churned
@@ -35,11 +36,8 @@ export default function Customers({ customers, fills, triggerToast, refreshData 
     const lastFill = custFills[0];
     const diffMs = Date.now() - new Date(lastFill.ts).getTime();
     const days = Math.floor(diffMs / 86400000);
-    const activeDays = Number(import.meta.env.VITE_ACTIVE_DAYS) || 21;
-    const atRiskDays = Number(import.meta.env.VITE_ATRISK_DAYS) || 45;
-    
     return {
-      status: days <= activeDays ? 'active' : days <= atRiskDays ? 'at-risk' : 'churned',
+      status: days <= ACTIVE_DAYS ? 'active' : days <= AT_RISK_DAYS ? 'at-risk' : 'churned',
       daysSince: days,
       fillCount: custFills.length,
       lastFill: lastFill,
@@ -254,9 +252,7 @@ export default function Customers({ customers, fills, triggerToast, refreshData 
             <div className="fg">
               <label>State</label>
               <select value={newState} onChange={(e) => setNewState(e.target.value)}>
-                <option value="Tamil Nadu">Tamil Nadu</option>
-                <option value="Kerala">Kerala</option>
-                <option value="Other">Other</option>
+                {STATES.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
           </div>
