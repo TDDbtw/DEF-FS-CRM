@@ -190,6 +190,7 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
   };
 
   const handleActualChange = (val) => {
+    if (rateOverride) return; // locked by override
     setActual(val);
     const numActual = parseFloat(val) || 0;
     const expected = L > 0 ? Math.round(L * currentMachine.rate) : 0;
@@ -244,6 +245,12 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
         triggerToast('Cash discount cannot exceed the actual amount', 'warn');
         return;
       }
+    }
+
+    // Safety check: override values must match
+    if (billTypeOverride && billType !== billTypeOverride.value) {
+      triggerToast(`This ${billTypeOverride.target_type} requires ${billTypeOverride.value === 'gst' ? 'GST' : 'Non-GST'} bill — cannot save`, 'warn');
+      return;
     }
 
     const payload = {
@@ -488,17 +495,23 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
           )}
           {entryType === 'sale' && (
           <div style={{ marginBottom: '14px' }}>
-            <div style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>Bill Type</div>
+            <div style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              Bill Type
+              {billTypeOverride && <span style={{ fontSize: '10px', color: 'var(--cb)', fontWeight: 600 }}>· locked by override</span>}
+            </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
               {[['gst', 'GST Bill'], ['non-gst', 'Non-GST Bill']].map(([v, label]) => (
-                <button key={v} type="button" onClick={() => setBillType(billType === v ? '' : v)} style={{
-                  padding: '8px 0', textAlign: 'center', fontSize: '12px', fontWeight: '500',
-                  border: `1.5px solid ${billType === v ? 'var(--green)' : 'var(--border-mid)'}`,
-                  borderRadius: 'var(--radius)', cursor: 'pointer',
-                  background: billType === v ? 'var(--green-soft)' : 'var(--surface)',
-                  color: billType === v ? 'var(--green)' : 'var(--text-2)',
-                  transition: 'all .15s'
-                }}>
+                <button key={v} type="button"
+                  onClick={() => !billTypeOverride && setBillType(billType === v ? '' : v)}
+                  style={{
+                    padding: '8px 0', textAlign: 'center', fontSize: '12px', fontWeight: '500',
+                    border: `1.5px solid ${billType === v ? 'var(--green)' : 'var(--border-mid)'}`,
+                    borderRadius: 'var(--radius)', cursor: billTypeOverride ? 'not-allowed' : 'pointer',
+                    background: billType === v ? 'var(--green-soft)' : 'var(--surface)',
+                    color: billType === v ? 'var(--green)' : 'var(--text-2)',
+                    opacity: billTypeOverride && !(billType === v) ? 0.5 : 1,
+                    transition: 'all .15s'
+                  }}>
                   {label}
                 </button>
               ))}
@@ -528,12 +541,17 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
                 </div>
               ) : (
               <div className="fg">
-                <label>Actual amount ₹ <span className="req">*</span></label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  Actual amount ₹ <span className="req">*</span>
+                  {rateOverride && <span style={{ fontSize: '10px', color: 'var(--cb)', fontWeight: 600 }}>· ₹{rateOverride.value}/L</span>}
+                </label>
                 <input
                   type="number"
                   value={actual}
                   onChange={(e) => handleActualChange(e.target.value)}
                   placeholder="₹ 0"
+                  disabled={!!rateOverride}
+                  style={{ opacity: rateOverride ? 0.6 : 1 }}
                 />
               </div>
               )}
