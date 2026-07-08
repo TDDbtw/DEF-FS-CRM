@@ -18,7 +18,12 @@ export default function Pricing({ overrides = [], customers = [], triggerToast, 
   const [value, setValue] = useState('');
   const [acOpen, setAcOpen] = useState(false);
   const [acMatches, setAcMatches] = useState([]);
+  const [filterTab, setFilterTab] = useState('all');
   const acRef = useRef(null);
+
+  const filteredOverrides = filterTab === 'all'
+    ? overrides
+    : overrides.filter(o => o.field === filterTab);
 
   useEffect(() => {
     function handleClickOutside(e) {
@@ -112,10 +117,19 @@ export default function Pricing({ overrides = [], customers = [], triggerToast, 
         </button>
       </div>
 
+      <div className="tabs" style={{ marginBottom: '12px' }}>
+        <button className={`tab ${filterTab === 'all' ? 'active' : ''}`} onClick={() => setFilterTab('all')}>All</button>
+        <button className={`tab ${filterTab === 'rate' ? 'active' : ''}`} onClick={() => setFilterTab('rate')}>Rate</button>
+        <button className={`tab ${filterTab === 'discount' ? 'active' : ''}`} onClick={() => setFilterTab('discount')}>Discount</button>
+        <button className={`tab ${filterTab === 'bill_type' ? 'active' : ''}`} onClick={() => setFilterTab('bill_type')}>Bill Type</button>
+      </div>
+
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        {overrides.length === 0 ? (
+        {filteredOverrides.length === 0 ? (
           <div className="card-pad" style={{ textAlign: 'center', color: 'var(--text-3)' }}>
-            No pricing overrides configured yet. Add custom rates or discounts for specific companies or vehicles.
+            {overrides.length === 0
+              ? 'No pricing overrides configured yet. Add custom rates or discounts for specific companies or vehicles.'
+              : `No ${filterTab} overrides found.`}
           </div>
         ) : (
           <div className="table-wrap">
@@ -124,14 +138,14 @@ export default function Pricing({ overrides = [], customers = [], triggerToast, 
                 <tr>
                   <th>Type</th>
                   <th>Target</th>
-                  <th>Field</th>
+                  {filterTab === 'all' && <th>Field</th>}
                   <th>Machine</th>
                   <th>Value</th>
                   <th style={{ width: 40 }}></th>
                 </tr>
               </thead>
               <tbody>
-                {overrides.map((o) => {
+                {filteredOverrides.map((o) => {
                   const vehicles = o.target_type === 'company' ? getCompanyVehicles(o.target_value) : [];
                   return (
                     <tr key={o.id}>
@@ -144,7 +158,7 @@ export default function Pricing({ overrides = [], customers = [], triggerToast, 
                           </div>
                         )}
                       </td>
-                      <td><span className={`badge ${o.field === 'rate' ? 'badge-hp' : o.field === 'discount' ? 'badge-cb' : 'badge-ok'}`}>{o.field === 'bill_type' ? 'bill' : o.field}</span></td>
+                      {filterTab === 'all' && <td><span className={`badge ${o.field === 'rate' ? 'badge-hp' : o.field === 'discount' ? 'badge-cb' : 'badge-ok'}`}>{o.field === 'bill_type' ? 'bill' : o.field}</span></td>}
                       <td>{o.machine ? <span className={`badge ${MACHINES[o.machine]?.badgeColor || 'badge-grey'}`}>{MACHINES[o.machine]?.name || o.machine}</span> : <span className="badge badge-grey">All</span>}</td>
                       <td style={{ fontWeight: 600, color: 'var(--green)' }}>
                         {o.field === 'bill_type' ? (o.value === 'gst' ? 'GST' : 'Non-GST') : `₹${o.value}/L`}
