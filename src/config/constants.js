@@ -28,7 +28,7 @@ export const EMPLOYEE_NAMES = (() => {
 })();
 
 export const EMPLOYEE_INITIALS = {
-  [import.meta.env.VITE_EMAIL_BASIL?.toLowerCase()]: 'MB',
-  [import.meta.env.VITE_EMAIL_BHAGAVATHI?.toLowerCase()]: 'BH',
-  [import.meta.env.VITE_EMAIL_OFFICE?.toLowerCase()]: 'OF',
+  basil: 'MB',
+  bhagavathi: 'BH',
+  office: 'OF',
 };
