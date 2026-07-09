@@ -1,20 +1,33 @@
 import { useState } from 'react';
 import { Download, Calendar, X } from 'lucide-react';
 import { MACHINES } from '../config/machines';
-import { SHIFT_START, SHIFT_END, EMPLOYEE_INITIALS } from '../config/constants';
+import { SHIFT_START, SHIFT_END, SHIFT_GRACE, EMPLOYEE_INITIALS } from '../config/constants';
 
 const getShiftType = (ts) => {
-  const h = new Date(ts).getHours();
-  return h >= SHIFT_START && h < SHIFT_END ? 'morning' : 'night';
+  const d = new Date(ts);
+  const totalMin = d.getHours() * 60 + d.getMinutes();
+  const startMin = SHIFT_START * 60;
+  const endMin = SHIFT_END * 60;
+  return totalMin >= startMin + SHIFT_GRACE && totalMin < endMin + SHIFT_GRACE ? 'morning' : 'night';
 };
 
-const getShiftDay = (ts) => {
+const getShiftDay = (ts, shiftType) => {
   const d = new Date(ts);
-  if (d.getHours() < SHIFT_START) d.setDate(d.getDate() - 1);
+  const totalMin = d.getHours() * 60 + d.getMinutes();
+  const startMin = SHIFT_START * 60;
+  if (totalMin < startMin + SHIFT_GRACE || (shiftType === 'night' && totalMin < startMin + SHIFT_GRACE + 60)) {
+    d.setDate(d.getDate() - 1);
+  }
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
+};
+
+const getFillShift = (f) => {
+  const s = f.shift;
+  if (s === 'morning' || s === 'night') return s;
+  return getShiftType(f.ts);
 };
 
 export default function FillHistory({ fills }) {
@@ -31,8 +44,8 @@ export default function FillHistory({ fills }) {
 
   const filteredFills = sortedFills.filter(f => {
     const d = new Date(f.ts);
-    const shiftType = getShiftType(f.ts);
-    const shiftDay = getShiftDay(f.ts);
+    const shiftType = getFillShift(f);
+    const shiftDay = getShiftDay(f.ts, shiftType);
 
     if (selectedShift === 'night') {
       if (shiftType !== 'night') return false;

@@ -1,22 +1,35 @@
 import { useState, useMemo } from 'react';
 import { MACHINES } from '../config/machines';
 import { Filter, Download, TrendingUp, Fuel, Users, CreditCard, DollarSign, Sun, ArrowUp, ChevronLeft, ChevronRight } from 'lucide-react';
-import { SHIFT_START, SHIFT_END } from '../config/constants';
+import { SHIFT_START, SHIFT_END, SHIFT_GRACE } from '../config/constants';
 
 const machineList = Object.values(MACHINES);
 
 const getShiftType = (ts) => {
-  const h = new Date(ts).getHours();
-  return h >= SHIFT_START && h < SHIFT_END ? 'morning' : 'night';
+  const d = new Date(ts);
+  const totalMin = d.getHours() * 60 + d.getMinutes();
+  const startMin = SHIFT_START * 60;
+  const endMin = SHIFT_END * 60;
+  return totalMin >= startMin + SHIFT_GRACE && totalMin < endMin + SHIFT_GRACE ? 'morning' : 'night';
 };
 
-const getShiftDay = (ts) => {
+const getShiftDay = (ts, shiftType) => {
   const d = new Date(ts);
-  if (d.getHours() < SHIFT_START) d.setDate(d.getDate() - 1);
+  const totalMin = d.getHours() * 60 + d.getMinutes();
+  const startMin = SHIFT_START * 60;
+  if (totalMin < startMin + SHIFT_GRACE || (shiftType === 'night' && totalMin < startMin + SHIFT_GRACE + 60)) {
+    d.setDate(d.getDate() - 1);
+  }
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
+};
+
+const getFillShift = (f) => {
+  const s = f.shift;
+  if (s === 'morning' || s === 'night') return s;
+  return getShiftType(f.ts);
 };
 
 const fmtDate = (d) => d.toISOString().split('T')[0];
@@ -43,8 +56,8 @@ export default function Reports({ fills }) {
     const to = toDate ? new Date(toDate + 'T23:59:59') : null;
     return fills.filter(f => {
       const d = new Date(f.ts);
-      const shiftType = getShiftType(f.ts);
-      const shiftDay = getShiftDay(f.ts);
+      const shiftType = getFillShift(f);
+      const shiftDay = getShiftDay(f.ts, shiftType);
       if (selectedShift !== 'all') {
         if (shiftType !== selectedShift) return false;
         if (selectedShift === 'night') {
@@ -111,8 +124,8 @@ export default function Reports({ fills }) {
   const shiftDays = useMemo(() => {
     const days = {};
     filtered.forEach(f => {
-      const day = getShiftDay(f.ts);
-      const shift = getShiftType(f.ts);
+      const day = getShiftDay(f.ts, getFillShift(f));
+      const shift = getFillShift(f);
       if (!days[day]) days[day] = { morning: { count: 0, litres: 0, amount: 0, cash: 0, gpay: 0, credit: 0 }, night: { count: 0, litres: 0, amount: 0, cash: 0, gpay: 0, credit: 0 } };
       const s = days[day][shift];
       s.count += 1; s.litres += f.litres || 0; s.amount += f.final || 0;
@@ -132,7 +145,7 @@ export default function Reports({ fills }) {
   const shiftTotals = useMemo(() => {
     const t = { morning: { count: 0, litres: 0, amount: 0, cash: 0, gpay: 0, credit: 0 }, night: { count: 0, litres: 0, amount: 0, cash: 0, gpay: 0, credit: 0 } };
     filtered.forEach(f => {
-      const shift = getShiftType(f.ts);
+      const shift = getFillShift(f);
       const s = t[shift];
       s.count += 1; s.litres += f.litres || 0; s.amount += f.final || 0;
       const p = f.payment || '';
@@ -481,8 +494,8 @@ export default function Reports({ fills }) {
             filtered.forEach(f => {
               rows.push([
                 new Date(f.ts).toLocaleDateString('en-IN'),
-                fmtDay(getShiftDay(f.ts)),
-                getShiftType(f.ts) === 'morning' ? 'Morning' : 'Night',
+                fmtDay(getShiftDay(f.ts, getFillShift(f))),
+                getFillShift(f) === 'morning' ? 'Morning' : 'Night',
                 f.employee, f.bill_type ? ((f.bill_type || 'gst') === 'gst' ? 'GST bill' : 'non GST') : '', f.machine, f.vehicle, fmt(f.litres), f.actual, f.discount||0, f.final, f.payment, f.split_cash||0, f.split_gpay||0
               ]);
             });

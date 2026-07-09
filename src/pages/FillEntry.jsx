@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { MACHINES } from '../config/machines';
 import { dbAPI } from '../config/supabase';
 import { Search, RotateCcw } from 'lucide-react';
-import { GST_MULTIPLIER, GST_HALF, GST_RATE, STATES } from '../config/constants';
+import { GST_MULTIPLIER, GST_HALF, GST_RATE, STATES, SHIFT_START, SHIFT_END, SHIFT_GRACE } from '../config/constants';
 
 export default function FillEntry({ currentUser, triggerToast, refreshData, customers, fills, overrides }) {
   const [selectedMachine, setSelectedMachine] = useState('hp');
@@ -253,6 +253,24 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
       return;
     }
 
+    const { data: logs } = await dbAPI.fetchShiftLogs();
+    const employeeStarts = (logs || [])
+      .filter(l => l.employee_name === currentUser?.name && l.type === 'start')
+      .sort((a, b) => new Date(b.created_at) - new Date(b.created_at));
+    const latestStart = employeeStarts[0];
+
+    let shiftType;
+    if (latestStart) {
+      const h = new Date(latestStart.created_at).getHours();
+      shiftType = h >= SHIFT_START && h < SHIFT_END ? 'morning' : 'night';
+    } else {
+      const d = new Date();
+      const totalMin = d.getHours() * 60 + d.getMinutes();
+      const startMin = SHIFT_START * 60;
+      const endMin = SHIFT_END * 60;
+      shiftType = totalMin >= startMin + SHIFT_GRACE && totalMin < endMin + SHIFT_GRACE ? 'morning' : 'night';
+    }
+
     const payload = {
       employee: currentUser?.name || 'Unknown',
       machine: selectedMachine,
@@ -271,7 +289,7 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
       payment: entryType === 'test' ? null : payment,
       split_cash: entryType === 'test' ? null : (payment === 'Cash + GPay' || payment === 'GPay + Cash Discount' ? (parseFloat(splitCash) || 0) : null),
       split_gpay: entryType === 'test' ? null : (payment === 'Cash + GPay' ? (parseFloat(splitGpay) || 0) : payment === 'GPay + Cash Discount' ? actualVal : null),
-      shift: 'Mid-shift fill',
+      shift: shiftType,
       bill_type: entryType === 'sale' ? (billType || null) : null,
       notes: notes.trim() || null
     };
