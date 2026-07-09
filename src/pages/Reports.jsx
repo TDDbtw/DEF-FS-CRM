@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { MACHINES } from '../config/machines';
-import { Filter, Download, TrendingUp, Fuel, Users, CreditCard, DollarSign, Sun } from 'lucide-react';
+import { Filter, Download, TrendingUp, Fuel, Users, CreditCard, DollarSign, Sun, ArrowUp, ChevronLeft, ChevronRight } from 'lucide-react';
 import { SHIFT_START, SHIFT_END } from '../config/constants';
 
 const machineList = Object.values(MACHINES);
@@ -19,12 +19,24 @@ const getShiftDay = (ts) => {
   return `${y}-${m}-${day}`;
 };
 
+const fmtDate = (d) => d.toISOString().split('T')[0];
+const todayStr = fmtDate(new Date());
+
+const presets = [
+  { label: 'Today', range: () => ({ from: todayStr, to: todayStr }) },
+  { label: 'This Week', range: () => { const d = new Date(); d.setDate(d.getDate() - d.getDay()); return { from: fmtDate(d), to: todayStr }; }},
+  { label: 'This Month', range: () => { const d = new Date(); d.setDate(1); return { from: fmtDate(d), to: todayStr }; }},
+  { label: 'Last Month', range: () => { const d = new Date(); d.setMonth(d.getMonth() - 1); d.setDate(1); const e = new Date(); e.setDate(0); return { from: fmtDate(d), to: fmtDate(e) }; }},
+  { label: 'Last 3 Months', range: () => { const d = new Date(); d.setMonth(d.getMonth() - 3); d.setDate(1); return { from: fmtDate(d), to: todayStr }; }},
+];
+
 export default function Reports({ fills }) {
-  const today = new Date().toISOString().split('T')[0];
-  const [fromDate, setFromDate] = useState(today);
-  const [toDate, setToDate] = useState(today);
+  const [fromDate, setFromDate] = useState(todayStr);
+  const [toDate, setToDate] = useState(todayStr);
   const [selectedEmployee, setSelectedEmployee] = useState('all');
   const [selectedShift, setSelectedShift] = useState('all');
+  const [shiftPage, setShiftPage] = useState(0);
+  const perPage = 6;
 
   const filtered = useMemo(() => {
     const from = fromDate ? new Date(fromDate) : null;
@@ -69,13 +81,9 @@ export default function Reports({ fills }) {
       e.amount += f.final || 0;
       e.count += 1;
       const p = f.payment || '';
-      if (p === 'Cash + GPay') {
-        e.cash += f.split_cash || 0;
-        e.gpay += f.split_gpay || 0;
-      } else if (p === 'GPay + Cash Discount') {
-        e.gpay += f.split_gpay || 0;
-        e.cash -= f.split_cash || 0;
-      } else if (p === 'Cash') e.cash += f.final || 0;
+      if (p === 'Cash + GPay') { e.cash += f.split_cash || 0; e.gpay += f.split_gpay || 0; }
+      else if (p === 'GPay + Cash Discount') { e.gpay += f.split_gpay || 0; e.cash -= f.split_cash || 0; }
+      else if (p === 'Cash') e.cash += f.final || 0;
       else if (p === 'GPay') e.gpay += f.final || 0;
       else e.credit += f.final || 0;
     });
@@ -91,20 +99,15 @@ export default function Reports({ fills }) {
       e.amount += f.final || 0;
       e.count += 1;
       const p = f.payment || '';
-      if (p === 'Cash + GPay') {
-        e.cash += f.split_cash || 0;
-        e.gpay += f.split_gpay || 0;
-      } else if (p === 'GPay + Cash Discount') {
-        e.gpay += f.split_gpay || 0;
-        e.cash -= f.split_cash || 0;
-      } else if (p === 'Cash') e.cash += f.final || 0;
+      if (p === 'Cash + GPay') { e.cash += f.split_cash || 0; e.gpay += f.split_gpay || 0; }
+      else if (p === 'GPay + Cash Discount') { e.gpay += f.split_gpay || 0; e.cash -= f.split_cash || 0; }
+      else if (p === 'Cash') e.cash += f.final || 0;
       else if (p === 'GPay') e.gpay += f.final || 0;
       else e.credit += f.final || 0;
     });
     return map;
   }, [filtered]);
 
-  // Shift grouping: group by shift day (9AM-9AM) then by shift type
   const shiftDays = useMemo(() => {
     const days = {};
     filtered.forEach(f => {
@@ -112,40 +115,30 @@ export default function Reports({ fills }) {
       const shift = getShiftType(f.ts);
       if (!days[day]) days[day] = { morning: { count: 0, litres: 0, amount: 0, cash: 0, gpay: 0, credit: 0 }, night: { count: 0, litres: 0, amount: 0, cash: 0, gpay: 0, credit: 0 } };
       const s = days[day][shift];
-      s.count += 1;
-      s.litres += f.litres || 0;
-      s.amount += f.final || 0;
+      s.count += 1; s.litres += f.litres || 0; s.amount += f.final || 0;
       const p = f.payment || '';
-      if (p === 'Cash + GPay') {
-        s.cash += f.split_cash || 0;
-        s.gpay += f.split_gpay || 0;
-      } else if (p === 'GPay + Cash Discount') {
-        s.gpay += f.split_gpay || 0;
-        s.cash -= f.split_cash || 0;
-      } else if (p === 'Cash') s.cash += f.final || 0;
+      if (p === 'Cash + GPay') { s.cash += f.split_cash || 0; s.gpay += f.split_gpay || 0; }
+      else if (p === 'GPay + Cash Discount') { s.gpay += f.split_gpay || 0; s.cash -= f.split_cash || 0; }
+      else if (p === 'Cash') s.cash += f.final || 0;
       else if (p === 'GPay') s.gpay += f.final || 0;
       else s.credit += f.final || 0;
     });
     return Object.entries(days).sort((a, b) => b[0].localeCompare(a[0]));
   }, [filtered]);
 
-  // Shift totals across all days
+  const paginatedShiftDays = shiftDays.slice(shiftPage * perPage, (shiftPage + 1) * perPage);
+  const totalShiftPages = Math.ceil(shiftDays.length / perPage);
+
   const shiftTotals = useMemo(() => {
     const t = { morning: { count: 0, litres: 0, amount: 0, cash: 0, gpay: 0, credit: 0 }, night: { count: 0, litres: 0, amount: 0, cash: 0, gpay: 0, credit: 0 } };
     filtered.forEach(f => {
       const shift = getShiftType(f.ts);
       const s = t[shift];
-      s.count += 1;
-      s.litres += f.litres || 0;
-      s.amount += f.final || 0;
+      s.count += 1; s.litres += f.litres || 0; s.amount += f.final || 0;
       const p = f.payment || '';
-      if (p === 'Cash + GPay') {
-        s.cash += f.split_cash || 0;
-        s.gpay += f.split_gpay || 0;
-      } else if (p === 'GPay + Cash Discount') {
-        s.gpay += f.split_gpay || 0;
-        s.cash -= f.split_cash || 0;
-      } else if (p === 'Cash') s.cash += f.final || 0;
+      if (p === 'Cash + GPay') { s.cash += f.split_cash || 0; s.gpay += f.split_gpay || 0; }
+      else if (p === 'GPay + Cash Discount') { s.gpay += f.split_gpay || 0; s.cash -= f.split_cash || 0; }
+      else if (p === 'Cash') s.cash += f.final || 0;
       else if (p === 'GPay') s.gpay += f.final || 0;
       else s.credit += f.final || 0;
     });
@@ -154,11 +147,7 @@ export default function Reports({ fills }) {
 
   const summary = useMemo(() => {
     let litres = 0, amount = 0, count = 0;
-    filtered.forEach(f => {
-      litres += f.litres || 0;
-      amount += f.final || 0;
-      count += 1;
-    });
+    filtered.forEach(f => { litres += f.litres || 0; amount += f.final || 0; count += 1; });
     return { litres, amount, count };
   }, [filtered]);
 
@@ -172,71 +161,71 @@ export default function Reports({ fills }) {
     return dt.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
   };
 
+  const handlePreset = (fn) => { const { from, to } = fn(); setFromDate(from); setToDate(to); setShiftPage(0); };
+  const resetAll = () => { setFromDate(todayStr); setToDate(todayStr); setSelectedEmployee('all'); setSelectedShift('all'); setShiftPage(0); };
+  const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+
   return (
-    <div style={{ maxWidth: '960px', margin: '0 auto' }}>
+    <div style={{ maxWidth: '960px', margin: '0 auto', paddingBottom: '60px' }}>
       <h1 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
         <TrendingUp size={20} /> Reports
       </h1>
 
-      {/* Filters */}
-      <div className="card card-pad" style={{ marginBottom: '16px' }}>
-        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-          <div className="fg" style={{ minWidth: '140px', flex: 1 }}>
+      {/* ── Filters ── */}
+      <div className="card card-pad" style={{ marginBottom: '16px', position: 'sticky', top: '0', zIndex: 10, borderBottom: '1px solid var(--border)' }}>
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '10px' }}>
+          {presets.map(p => (
+            <button key={p.label} onClick={() => handlePreset(p.range)} className="btn btn-sm btn-outline">{p.label}</button>
+          ))}
+          <button onClick={resetAll} className="btn btn-sm btn-outline"><Filter size={12} /> Reset</button>
+        </div>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          <div className="fg" style={{ minWidth: '130px', flex: 1 }}>
             <label style={labelStyle}>From</label>
-            <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} style={inputStyle} />
-          </div>
-          <div className="fg" style={{ minWidth: '140px', flex: 1 }}>
-            <label style={labelStyle}>To</label>
-            <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} style={inputStyle} />
+            <input type="date" value={fromDate} onChange={e => { setFromDate(e.target.value); setShiftPage(0); }} style={inputStyle} />
           </div>
           <div className="fg" style={{ minWidth: '130px', flex: 1 }}>
+            <label style={labelStyle}>To</label>
+            <input type="date" value={toDate} onChange={e => { setToDate(e.target.value); setShiftPage(0); }} style={inputStyle} />
+          </div>
+          <div className="fg" style={{ minWidth: '120px', flex: 1 }}>
             <label style={labelStyle}>Employee</label>
-            <select value={selectedEmployee} onChange={e => setSelectedEmployee(e.target.value)} style={inputStyle}>
+            <select value={selectedEmployee} onChange={e => { setSelectedEmployee(e.target.value); setShiftPage(0); }} style={inputStyle}>
               <option value="all">All</option>
               {employees.map(e => <option key={e} value={e}>{e}</option>)}
             </select>
           </div>
-          <div className="fg" style={{ minWidth: '130px', flex: 1 }}>
+          <div className="fg" style={{ minWidth: '120px', flex: 1 }}>
             <label style={labelStyle}>Shift</label>
-            <select value={selectedShift} onChange={e => setSelectedShift(e.target.value)} style={inputStyle}>
+            <select value={selectedShift} onChange={e => { setSelectedShift(e.target.value); setShiftPage(0); }} style={inputStyle}>
               <option value="all">All shifts</option>
               <option value="morning">Morning (9AM–9PM)</option>
               <option value="night">Night (9PM–9AM)</option>
             </select>
           </div>
-          <button onClick={() => { setFromDate(today); setToDate(today); setSelectedEmployee('all'); setSelectedShift('all'); }} style={resetBtnStyle}>
-            <Filter size={14} /> Reset
-          </button>
         </div>
       </div>
 
-      {/* Summary */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px', marginBottom: '16px' }}>
-        <div className="card card-pad" style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '11px', color: 'var(--text-3)', marginBottom: '4px' }}><Fuel size={12} style={{ marginRight: 4 }} />Fills</div>
-          <div style={{ fontSize: '22px', fontWeight: '600' }}>{summary.count}</div>
-        </div>
-        <div className="card card-pad" style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '11px', color: 'var(--text-3)', marginBottom: '4px' }}><Fuel size={12} style={{ marginRight: 4 }} />Litres</div>
-          <div style={{ fontSize: '22px', fontWeight: '600' }}>{fmt(summary.litres)}</div>
-        </div>
-        <div className="card card-pad" style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '11px', color: 'var(--text-3)', marginBottom: '4px' }}><DollarSign size={12} style={{ marginRight: 4 }} />Revenue</div>
-          <div style={{ fontSize: '22px', fontWeight: '600' }}>{formatINR(summary.amount)}</div>
-        </div>
-        <div className="card card-pad" style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '11px', color: 'var(--text-3)', marginBottom: '4px' }}><Users size={12} style={{ marginRight: 4 }} />Employees</div>
-          <div style={{ fontSize: '22px', fontWeight: '600' }}>{Object.keys(byEmployee).length}</div>
-        </div>
+      {/* ── Summary Cards ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', marginBottom: '16px' }}>
+        {[
+          { icon: <Fuel size={14} />, label: 'Fills', val: summary.count },
+          { icon: <Fuel size={14} />, label: 'Litres', val: fmt(summary.litres) },
+          { icon: <DollarSign size={14} />, label: 'Revenue', val: formatINR(summary.amount) },
+          { icon: <Users size={14} />, label: 'Employees', val: Object.keys(byEmployee).length },
+        ].map((c, i) => (
+          <div key={i} className="card" style={{ padding: '14px', textAlign: 'center' }}>
+            <div style={{ fontSize: '11px', color: 'var(--text-3)', marginBottom: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>{c.icon}{c.label}</div>
+            <div style={{ fontSize: '20px', fontWeight: '600' }}>{c.val}</div>
+          </div>
+        ))}
       </div>
 
-      {/* Shift Summary */}
+      {/* ── Shift Summary ── */}
       <div className="card card-pad" style={{ marginBottom: '16px' }}>
-        <h2 style={{ fontSize: '14px', fontWeight: '600', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <Sun size={16} /> Sales by Shift (9AM–9AM day)
-        </h2>
+        <h2 style={sectionTitle}><Sun size={16} /> Sales by Shift</h2>
         {filtered.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-3)', fontSize: '13px' }}>No transactions</div>
+          <div className="card-pad" style={{ textAlign: 'center', color: 'var(--text-3)' }}>No transactions</div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
             <table style={tableStyle}>
@@ -252,7 +241,7 @@ export default function Reports({ fills }) {
                 </tr>
               </thead>
               <tbody>
-                {[['morning', '☀️ Morning (9AM–9PM)'], ['night', '🌙 Night (9PM–9AM)']].map(([key, label]) => {
+                {[['morning', 'Morning (9AM–9PM)'], ['night', 'Night (9PM–9AM)']].map(([key, label]) => {
                   const s = shiftTotals[key];
                   if (s.count === 0) return null;
                   return (
@@ -268,7 +257,7 @@ export default function Reports({ fills }) {
                   );
                 })}
                 <tr style={{ background: 'var(--bg)' }}>
-                  <td style={{ ...tdStyle, fontWeight: '600' }}>📊 Day Total</td>
+                  <td style={{ ...tdStyle, fontWeight: '600' }}>Day Total</td>
                   <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600' }}>{summary.count}</td>
                   <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600', fontFamily: 'var(--mono)' }}>{fmt(summary.litres)}</td>
                   <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600', fontFamily: 'var(--mono)' }}>{formatINR(summary.amount)}</td>
@@ -282,17 +271,15 @@ export default function Reports({ fills }) {
         )}
       </div>
 
-      {/* Shift Day Detail */}
+      {/* ── Shift Day Detail with Pagination ── */}
       {shiftDays.length > 0 && (
         <div className="card card-pad" style={{ marginBottom: '16px' }}>
-          <h2 style={{ fontSize: '14px', fontWeight: '600', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Sun size={16} /> Shift Day Detail
-          </h2>
+          <h2 style={sectionTitle}><Sun size={16} /> Shift Day Detail</h2>
           <div style={{ overflowX: 'auto' }}>
             <table style={tableStyle}>
               <thead>
                 <tr>
-                  <th style={thStyle}>Day (9AM–9AM)</th>
+                  <th style={thStyle}>Day</th>
                   <th style={thStyle}>Shift</th>
                   <th style={{ ...thStyle, textAlign: 'right' }}>Fills</th>
                   <th style={{ ...thStyle, textAlign: 'right' }}>Litres</th>
@@ -302,59 +289,66 @@ export default function Reports({ fills }) {
                 </tr>
               </thead>
               <tbody>
-                {shiftDays.map(([day, data]) => {
-                  const morning = data.morning;
-                  const night = data.night;
-                  const shifts = [['morning', '☀️ Morning', morning], ['night', '🌙 Night', night]].filter(([,,s]) => s.count > 0);
+                {paginatedShiftDays.map(([day, data]) => {
+                  const shifts = [['morning', 'Morning', data.morning], ['night', 'Night', data.night]].filter(([,,s]) => s.count > 0);
                   const dayTotal = {
-                    count: morning.count + night.count,
-                    litres: morning.litres + night.litres,
-                    amount: morning.amount + night.amount,
-                    cash: morning.cash + night.cash,
-                    gpay: morning.gpay + night.gpay,
+                    count: data.morning.count + data.night.count,
+                    litres: data.morning.litres + data.night.litres,
+                    amount: data.morning.amount + data.night.amount,
+                    cash: data.morning.cash + data.night.cash,
+                    gpay: data.morning.gpay + data.night.gpay,
                   };
-                  return (
-                    <React.Fragment key={day}>
-                      {shifts.map(([key, label, s], idx) => (
-                        <tr key={day + key}>
-                          {idx === 0 && (
-                            <td rowSpan={shifts.length + 1} style={{ ...tdStyle, fontWeight: '600', verticalAlign: 'top', whiteSpace: 'nowrap' }}>
-                              {fmtDay(day)}
-                            </td>
-                          )}
-                          <td style={tdStyle}>{label}</td>
-                          <td style={{ ...tdStyle, textAlign: 'right' }}>{s.count}</td>
-                          <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'var(--mono)' }}>{fmt(s.litres)}</td>
-                          <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'var(--mono)' }}>{formatINR(s.amount)}</td>
-                          <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'var(--mono)' }}>{formatINR(s.cash)}</td>
-                          <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'var(--mono)' }}>{formatINR(s.gpay)}</td>
-                        </tr>
-                      ))}
-                      <tr style={{ background: 'var(--bg)' }}>
-                        <td style={{ ...tdStyle }}></td>
-                        <td style={{ ...tdStyle, fontWeight: '600', textAlign: 'right', color: 'var(--text-2)' }}>Day total</td>
-                        <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600' }}>{dayTotal.count}</td>
-                        <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600', fontFamily: 'var(--mono)' }}>{fmt(dayTotal.litres)}</td>
-                        <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600', fontFamily: 'var(--mono)' }}>{formatINR(dayTotal.amount)}</td>
-                        <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600', fontFamily: 'var(--mono)' }}>{formatINR(dayTotal.cash)}</td>
-                        <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600', fontFamily: 'var(--mono)' }}>{formatINR(dayTotal.gpay)}</td>
-                      </tr>
-                    </React.Fragment>
+                  return shifts.map(([key, label, s], idx) => (
+                    <tr key={day + key}>
+                      {idx === 0 && (
+                        <td rowSpan={shifts.length} style={{ ...tdStyle, fontWeight: '600', verticalAlign: 'top', whiteSpace: 'nowrap' }}>
+                          {fmtDay(day)}
+                        </td>
+                      )}
+                      <td style={{ ...tdStyle, color: key === 'night' ? 'var(--text-2)' : 'inherit' }}>{label}</td>
+                      <td style={{ ...tdStyle, textAlign: 'right' }}>{s.count}</td>
+                      <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'var(--mono)' }}>{fmt(s.litres)}</td>
+                      <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'var(--mono)' }}>{formatINR(s.amount)}</td>
+                      <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'var(--mono)' }}>{formatINR(s.cash)}</td>
+                      <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'var(--mono)' }}>{formatINR(s.gpay)}</td>
+                    </tr>
+                  )).concat(
+                    <tr key={day + '_tot'} style={{ background: 'var(--bg)' }}>
+                      <td style={{ ...tdStyle }}></td>
+                      <td style={{ ...tdStyle, fontWeight: '600', textAlign: 'right', color: 'var(--text-2)' }}>Day total</td>
+                      <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600' }}>{dayTotal.count}</td>
+                      <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600', fontFamily: 'var(--mono)' }}>{fmt(dayTotal.litres)}</td>
+                      <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600', fontFamily: 'var(--mono)' }}>{formatINR(dayTotal.amount)}</td>
+                      <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600', fontFamily: 'var(--mono)' }}>{formatINR(dayTotal.cash)}</td>
+                      <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600', fontFamily: 'var(--mono)' }}>{formatINR(dayTotal.gpay)}</td>
+                    </tr>
                   );
                 })}
               </tbody>
             </table>
           </div>
+          {/* Pagination */}
+          {totalShiftPages > 1 && (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px', marginTop: '12px' }}>
+              <button disabled={shiftPage === 0} onClick={() => setShiftPage(p => Math.max(0, p - 1))}
+                className="btn btn-sm btn-outline" style={{ opacity: shiftPage === 0 ? 0.4 : 1 }}>
+                <ChevronLeft size={14} /> Prev
+              </button>
+              <span style={{ fontSize: '12px', color: 'var(--text-2)' }}>Page {shiftPage + 1} of {totalShiftPages}</span>
+              <button disabled={shiftPage >= totalShiftPages - 1} onClick={() => setShiftPage(p => Math.min(totalShiftPages - 1, p + 1))}
+                className="btn btn-sm btn-outline" style={{ opacity: shiftPage >= totalShiftPages - 1 ? 0.4 : 1 }}>
+                Next <ChevronRight size={14} />
+              </button>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Sales by Employee & Machine */}
+      {/* ── Sales by Employee & Machine ── */}
       <div className="card card-pad" style={{ marginBottom: '16px' }}>
-        <h2 style={{ fontSize: '14px', fontWeight: '600', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <Fuel size={16} /> Sales by Employee & Machine
-        </h2>
+        <h2 style={sectionTitle}><Fuel size={16} /> Sales by Employee & Machine</h2>
         {Object.keys(byEmployee).length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-3)', fontSize: '13px' }}>No transactions in this period</div>
+          <div className="card-pad" style={{ textAlign: 'center', color: 'var(--text-3)' }}>No transactions in this period</div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
             <table style={tableStyle}>
@@ -365,42 +359,45 @@ export default function Reports({ fills }) {
                   <th style={{ ...thStyle, textAlign: 'right' }}>Fills</th>
                   <th style={{ ...thStyle, textAlign: 'right' }}>Litres</th>
                   <th style={{ ...thStyle, textAlign: 'right' }}>Revenue</th>
+                  <th style={{ ...thStyle, textAlign: 'right' }}>Cash</th>
+                  <th style={{ ...thStyle, textAlign: 'right' }}>GPay</th>
                 </tr>
               </thead>
               <tbody>
                 {Object.entries(byEmployee).map(([emp, machines]) => {
                   const empTotal = employeeTotals[emp];
                   const machineEntries = sortByMachine(Object.entries(machines));
-                  return (
-                    <React.Fragment key={emp}>
-                      {machineEntries.map(([mid, data], idx) => {
-                        const mac = machineList.find(m => m.id === mid);
-                        return (
-                          <tr key={emp + mid}>
-                            {idx === 0 && (
-                              <td rowSpan={machineEntries.length} style={{ ...tdStyle, fontWeight: '600', verticalAlign: 'top' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                  <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: 'var(--green-soft)', color: 'var(--green)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: '600' }}>
-                                    {emp.substring(0, 2)}
-                                  </div>
-                                  {emp}
-                                </div>
-                              </td>
-                            )}
-                            <td style={tdStyle}><span style={{ color: mac?.themeColor || 'inherit', fontWeight: '500' }}>{mac?.name || mid}</span></td>
-                            <td style={{ ...tdStyle, textAlign: 'right' }}>{data.count}</td>
-                            <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'var(--mono)' }}>{fmt(data.litres)}</td>
-                            <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'var(--mono)' }}>{formatINR(data.amount)}</td>
-                          </tr>
-                        );
-                      })}
-                      <tr style={{ background: 'var(--bg)' }}>
-                        <td colSpan={2} style={{ ...tdStyle, fontWeight: '600', textAlign: 'right', color: 'var(--text-2)' }}>Total</td>
-                        <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600' }}>{empTotal?.count || 0}</td>
-                        <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600', fontFamily: 'var(--mono)' }}>{fmt(empTotal?.litres || 0)}</td>
-                        <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600', fontFamily: 'var(--mono)' }}>{formatINR(empTotal?.amount || 0)}</td>
+                  return machineEntries.map(([mid, data], idx) => {
+                    const mac = machineList.find(m => m.id === mid);
+                    return (
+                      <tr key={emp + mid}>
+                        {idx === 0 && (
+                          <td rowSpan={machineEntries.length} style={{ ...tdStyle, fontWeight: '600', verticalAlign: 'top' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: 'var(--green-soft)', color: 'var(--green)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: '600' }}>
+                                {emp.substring(0, 2)}
+                              </div>
+                              {emp}
+                            </div>
+                          </td>
+                        )}
+                        <td style={tdStyle}><span style={{ color: mac?.themeColor || 'inherit', fontWeight: '500' }}>{mac?.name || mid}</span></td>
+                        <td style={{ ...tdStyle, textAlign: 'right' }}>{data.count}</td>
+                        <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'var(--mono)' }}>{fmt(data.litres)}</td>
+                        <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'var(--mono)' }}>{formatINR(data.amount)}</td>
+                        <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'var(--mono)' }}>{formatINR(data.cash)}</td>
+                        <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'var(--mono)' }}>{formatINR(data.gpay)}</td>
                       </tr>
-                    </React.Fragment>
+                    );
+                  }).concat(
+                    <tr key={emp + '_tot'} style={{ background: 'var(--bg)' }}>
+                      <td colSpan={2} style={{ ...tdStyle, fontWeight: '600', textAlign: 'right', color: 'var(--text-2)' }}>Total</td>
+                      <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600' }}>{empTotal?.count || 0}</td>
+                      <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600', fontFamily: 'var(--mono)' }}>{fmt(empTotal?.litres || 0)}</td>
+                      <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600', fontFamily: 'var(--mono)' }}>{formatINR(empTotal?.amount || 0)}</td>
+                      <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600', fontFamily: 'var(--mono)' }}>{formatINR(empTotal?.cash || 0)}</td>
+                      <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600', fontFamily: 'var(--mono)' }}>{formatINR(empTotal?.gpay || 0)}</td>
+                    </tr>
                   );
                 })}
               </tbody>
@@ -409,12 +406,12 @@ export default function Reports({ fills }) {
         )}
       </div>
 
-      {/* Employee Performance + Payment Collection */}
+      {/* ── Employee Performance + Payment Collection ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px', marginBottom: '16px' }}>
         <div className="card card-pad">
-          <h2 style={{ fontSize: '14px', fontWeight: '600', marginBottom: '12px' }}><Users size={16} style={{ marginRight: 6 }} />Employee Performance</h2>
+          <h2 style={sectionTitle}><Users size={16} /> Employee Performance</h2>
           {Object.keys(employeeTotals).length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-3)', fontSize: '13px' }}>No data</div>
+            <div className="card-pad" style={{ textAlign: 'center', color: 'var(--text-3)' }}>No data</div>
           ) : (
             <div style={{ overflowX: 'auto' }}>
               <table style={tableStyle}>
@@ -444,9 +441,9 @@ export default function Reports({ fills }) {
         </div>
 
         <div className="card card-pad">
-          <h2 style={{ fontSize: '14px', fontWeight: '600', marginBottom: '12px' }}><CreditCard size={16} style={{ marginRight: 6 }} />Payment Collection</h2>
+          <h2 style={sectionTitle}><CreditCard size={16} /> Payment Collection</h2>
           {Object.keys(employeeTotals).length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-3)', fontSize: '13px' }}>No data</div>
+            <div className="card-pad" style={{ textAlign: 'center', color: 'var(--text-3)' }}>No data</div>
           ) : (
             <div style={{ overflowX: 'auto' }}>
               <table style={tableStyle}>
@@ -476,9 +473,9 @@ export default function Reports({ fills }) {
         </div>
       </div>
 
-      {/* CSV Export */}
+      {/* ── CSV Export & Bottom Nav ── */}
       {filtered.length > 0 && (
-        <div style={{ textAlign: 'center', marginTop: '8px', marginBottom: '24px' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', marginTop: '8px', marginBottom: '24px' }}>
           <button onClick={() => {
             const rows = [['Date','Shift Day','Shift Type','Employee','Bill','Machine','Vehicle','Litres','Amount','Discount','Final','Payment','Split Cash','Split GPay']];
             filtered.forEach(f => {
@@ -495,23 +492,35 @@ export default function Reports({ fills }) {
             const a = document.createElement('a');
             a.href = url; a.download = `report_${fromDate}_${toDate}.csv`;
             a.click(); URL.revokeObjectURL(url);
-          }} style={{
-            display: 'inline-flex', alignItems: 'center', gap: '6px',
-            padding: '8px 16px', border: '1px solid var(--border-mid)',
-            borderRadius: 'var(--radius)', background: 'var(--surface)',
-            color: 'var(--text-2)', cursor: 'pointer', fontSize: '12px', fontWeight: '500',
-          }}>
+          }} className="btn btn-outline">
             <Download size={14} /> Export CSV
+          </button>
+          <button onClick={scrollToTop} className="btn btn-outline">
+            <ArrowUp size={14} /> Back to top
           </button>
         </div>
       )}
+
+      {/* ── Floating scroll-to-top ── */}
+      <button onClick={scrollToTop} style={{
+        position: 'fixed', bottom: '20px', right: '20px', zIndex: 20,
+        width: '40px', height: '40px', borderRadius: '50%',
+        background: 'var(--green)', color: '#fff', border: 'none',
+        cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        opacity: '0.85', transition: 'opacity 0.15s',
+      }}
+      onMouseEnter={e => e.target.style.opacity = '1'}
+      onMouseLeave={e => e.target.style.opacity = '0.85'}>
+        <ArrowUp size={18} />
+      </button>
     </div>
   );
 }
 
 const labelStyle = { fontSize: '11px', fontWeight: '500', color: 'var(--text-2)', marginBottom: '4px', display: 'block' };
 const inputStyle = { width: '100%', padding: '8px 10px', border: '1px solid var(--border-mid)', borderRadius: 'var(--radius)', fontSize: '13px', color: 'var(--text)', background: 'var(--surface)', outline: 'none' };
-const resetBtnStyle = { display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '8px 12px', border: '1px solid var(--border-mid)', borderRadius: 'var(--radius)', background: 'var(--surface)', color: 'var(--text-2)', cursor: 'pointer', fontSize: '12px', fontWeight: '500', alignSelf: 'flex-end' };
 const tableStyle = { width: '100%', borderCollapse: 'collapse', fontSize: '13px' };
 const thStyle = { textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid var(--border)', fontSize: '11px', fontWeight: '600', color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' };
 const tdStyle = { padding: '8px 10px', borderBottom: '1px solid var(--border)' };
+const sectionTitle = { fontSize: '14px', fontWeight: '600', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' };
