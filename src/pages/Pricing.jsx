@@ -140,7 +140,7 @@ export default function Pricing({ overrides = [], customers = [], triggerToast, 
                   <th>Target</th>
                   {filterTab === 'all' && <th>Field</th>}
                   <th>Machine</th>
-                  <th>Value</th>
+                  <th>{filterTab === 'bill_type' ? 'Bill' : 'Value'}</th>
                   <th style={{ width: 40 }}></th>
                 </tr>
               </thead>
