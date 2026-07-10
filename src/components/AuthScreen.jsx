@@ -69,7 +69,7 @@ export default function AuthScreen({ onLoginSuccess }) {
           <div style={styles.logoCircle}>
             <Fuel size={28} color="var(--green)" />
           </div>
-          <h1 style={styles.brandTitle}>{BUSINESS_NAME.replace(' & ', ' &<br />')}</h1>
+          <h1 style={styles.brandTitle}>{BUSINESS_NAME}</h1>
           <p style={styles.brandSub}>{BUSINESS_LOCATION}</p>
         </div>
 

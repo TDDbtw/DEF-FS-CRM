@@ -72,7 +72,7 @@ export default function Layout({
         display: mobileMenuOpen ? 'flex' : undefined
       }}>
         <div className="sidebar-brand">
-          <div className="brand-name">{BUSINESS_NAME.replace(' & ', ' &<br />')}</div>
+          <div className="brand-name">{BUSINESS_NAME}</div>
           <div className="brand-sub">{BUSINESS_LOCATION}</div>
         </div>
 
