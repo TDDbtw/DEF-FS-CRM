@@ -96,15 +96,19 @@ export default function Customers({ customers, fills, triggerToast, refreshData 
       notes: newNotes.trim() || null,
     };
 
-    const { error } = await dbAPI.addCustomer(payload);
+    try {
+      const { error } = await dbAPI.addCustomer(payload);
 
-    if (error) {
-      triggerToast('Error adding customer: ' + error.message, 'warn');
-    } else {
-      triggerToast('Customer registered successfully ✓');
-      setAddModalOpen(false);
-      resetNewForm();
-      refreshData();
+      if (error) {
+        triggerToast('Error adding customer: ' + error.message, 'warn');
+      } else {
+        triggerToast('Customer registered successfully ✓');
+        setAddModalOpen(false);
+        resetNewForm();
+        refreshData();
+      }
+    } catch (e) {
+      triggerToast('Failed to add customer. Check your connection.', 'warn');
     }
   };
 

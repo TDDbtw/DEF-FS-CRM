@@ -253,7 +253,10 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
       return;
     }
 
-    const { data: logs } = await dbAPI.fetchShiftLogs();
+    const { data: logs, error: logsErr } = await dbAPI.fetchShiftLogs();
+    if (logsErr) {
+      triggerToast('Could not determine shift from logs. Defaulting to time-based.', 'warn');
+    }
     const employeeStarts = (logs || [])
       .filter(l => l.employee_name === currentUser?.name && l.type === 'start')
       .sort((a, b) => new Date(b.created_at) - new Date(b.created_at));

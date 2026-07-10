@@ -123,4 +123,13 @@ export const dbAPI = {
       .eq('id', id);
     return { data, error };
   },
+
+  updateOverride: async (id, override) => {
+    const { data, error } = await supabase
+      .from('pricing_overrides')
+      .update(override)
+      .eq('id', id)
+      .select();
+    return { data, error };
+  },
 };

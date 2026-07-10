@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { dbAPI } from '../config/supabase';
 import Modal from '../components/Modal';
 import { MACHINES } from '../config/machines';
-import { Tag, Plus, Trash2 } from 'lucide-react';
+import { Edit3, Tag, Plus, Trash2 } from 'lucide-react';
 
 const machineOptions = [
   { id: 'all', label: 'All Machines' },
@@ -19,6 +19,7 @@ export default function Pricing({ overrides = [], customers = [], triggerToast, 
   const [acOpen, setAcOpen] = useState(false);
   const [acMatches, setAcMatches] = useState([]);
   const [filterTab, setFilterTab] = useState('all');
+  const [editingId, setEditingId] = useState(null);
   const acRef = useRef(null);
 
   const filteredOverrides = filterTab === 'all'
@@ -65,7 +66,7 @@ export default function Pricing({ overrides = [], customers = [], triggerToast, 
     setAcOpen(matches.length > 0);
   };
 
-  const handleAdd = async (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
     if (!targetValue || !value) {
       triggerToast('Please fill all fields', 'warn');
@@ -78,16 +79,41 @@ export default function Pricing({ overrides = [], customers = [], triggerToast, 
       machine: machine === 'all' ? null : machine,
       value: field === 'bill_type' ? value : Number(value),
     };
-    const { error } = await dbAPI.addOverride(payload);
+    let error;
+    if (editingId) {
+      const res = await dbAPI.updateOverride(editingId, payload);
+      error = res.error;
+    } else {
+      const res = await dbAPI.addOverride(payload);
+      error = res.error;
+    }
     if (error) {
       triggerToast('Error: ' + error.message, 'warn');
     } else {
-      triggerToast('Override added ✓');
+      triggerToast(editingId ? 'Override updated ✓' : 'Override added ✓');
       setModalOpen(false);
+      setEditingId(null);
       setTargetValue('');
       setValue('');
       refreshData();
     }
+  };
+
+  const openEdit = (o) => {
+    setTargetType(o.target_type);
+    setTargetValue(o.target_value);
+    setField(o.field);
+    setMachine(o.machine || 'all');
+    setValue(o.field === 'bill_type' ? o.value : String(o.value));
+    setEditingId(o.id);
+    setModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setModalOpen(false);
+    setEditingId(null);
+    setTargetValue('');
+    setValue('');
   };
 
   const handleDelete = async (id) => {
@@ -164,10 +190,16 @@ export default function Pricing({ overrides = [], customers = [], triggerToast, 
                         {o.field === 'bill_type' ? (o.value === 'gst' ? 'GST' : 'Non-GST') : `₹${o.value}/L`}
                       </td>
                       <td>
-                        <button className="btn btn-sm btn-outline" onClick={() => handleDelete(o.id)}
-                          style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }}>
-                          <Trash2 size={13} />
-                        </button>
+                        <div style={{ display: 'flex', gap: '4px' }}>
+                          <button className="btn btn-sm btn-outline" onClick={() => openEdit(o)}
+                            style={{ color: 'var(--text-2)', borderColor: 'var(--border-mid)' }}>
+                            <Edit3 size={13} />
+                          </button>
+                          <button className="btn btn-sm btn-outline" onClick={() => handleDelete(o.id)}
+                            style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }}>
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -178,8 +210,8 @@ export default function Pricing({ overrides = [], customers = [], triggerToast, 
         )}
       </div>
 
-      <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title="Add Pricing Override">
-        <form onSubmit={handleAdd} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+      <Modal isOpen={modalOpen} onClose={closeModal} title={editingId ? 'Edit Pricing Override' : 'Add Pricing Override'}>
+        <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           <div>
             <div style={{ marginBottom: '6px', fontSize: '12px', fontWeight: 500, color: 'var(--text-2)' }}>Target Type</div>
             <div className="tabs" style={{ marginBottom: 0 }}>

@@ -35,29 +35,39 @@ export default function AuthScreen({ onLoginSuccess }) {
     const displayName = matchedName.charAt(0).toUpperCase() + matchedName.slice(1);
     const email = userEmails[matchedName];
 
-    const { data, error: loginErr } = await dbAPI.login(email, password);
+    try {
+      const { data, error: loginErr } = await dbAPI.login(email, password);
 
-    if (loginErr) {
-      setError(loginErr.message || 'Incorrect password/PIN. Please try again.');
+      if (loginErr) {
+        setError(loginErr.message || 'Incorrect password/PIN. Please try again.');
+        setLoading(false);
+      } else {
+        const userSession = {
+          name: displayName,
+          email: email,
+          token: data.session?.access_token,
+          ts: Date.now()
+        };
+        localStorage.setItem('gloe_session_user', JSON.stringify(userSession));
+        onLoginSuccess(userSession);
+      }
+    } catch (e) {
+      setError('Connection error. Please check your network and try again.');
       setLoading(false);
-    } else {
-      const userSession = {
-        name: displayName,
-        email: email,
-        token: data.session?.access_token,
-        ts: Date.now()
-      };
-      localStorage.setItem('gloe_session_user', JSON.stringify(userSession));
-      onLoginSuccess(userSession);
     }
   };
 
   const handleGoogleLogin = async () => {
     setError('');
     setLoading(true);
-    const { error: err } = await dbAPI.loginWithGoogle();
-    if (err) {
-      setError(err.message || 'Google authentication failed.');
+    try {
+      const { error: err } = await dbAPI.loginWithGoogle();
+      if (err) {
+        setError(err.message || 'Google authentication failed.');
+        setLoading(false);
+      }
+    } catch (e) {
+      setError('Connection error. Please check your network and try again.');
       setLoading(false);
     }
   };

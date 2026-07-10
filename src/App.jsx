@@ -56,24 +56,28 @@ export default function App() {
   // Check login session on mount
   useEffect(() => {
     const checkAuth = async () => {
-      const { data } = await dbAPI.getCurrentUser();
-      if (data.user) {
-        // Restore full session from localStorage if available (preserves display name)
-        const stored = localStorage.getItem('gloe_session_user');
-        if (stored) {
-          const session = JSON.parse(stored);
-          session.role = getUserRole(session.email);
-          setCurrentUser(session);
-          setActivePage(session.role === 'office' ? 'dashboard' : 'fill');
-        } else {
-          const role = getUserRole(data.user);
-          setCurrentUser({
-            name: getUserDisplayName(data.user.email),
-            email: data.user.email,
-            role,
-          });
-          setActivePage(role === 'office' ? 'dashboard' : 'fill');
+      try {
+        const { data } = await dbAPI.getCurrentUser();
+        if (data.user) {
+          // Restore full session from localStorage if available (preserves display name)
+          const stored = localStorage.getItem('gloe_session_user');
+          if (stored) {
+            const session = JSON.parse(stored);
+            session.role = getUserRole(session.email);
+            setCurrentUser(session);
+            setActivePage(session.role === 'office' ? 'dashboard' : 'fill');
+          } else {
+            const role = getUserRole(data.user);
+            setCurrentUser({
+              name: getUserDisplayName(data.user.email),
+              email: data.user.email,
+              role,
+            });
+            setActivePage(role === 'office' ? 'dashboard' : 'fill');
+          }
         }
+      } catch (e) {
+        console.error('Auth check failed:', e);
       }
       setAuthChecked(true);
     };
@@ -91,15 +95,16 @@ export default function App() {
         dbAPI.fetchOverrides(),
       ]);
 
-      if (custRes.error) console.error('Error fetching customers:', custRes.error);
-      if (fillRes.error) console.error('Error fetching fills:', fillRes.error);
-      if (overridesRes.error) console.error('Error fetching overrides:', overridesRes.error);
+      if (custRes.error) { console.error('Error fetching customers:', custRes.error); triggerToast('Could not load customers', 'warn'); }
+      if (fillRes.error) { console.error('Error fetching fills:', fillRes.error); triggerToast('Could not load fill records', 'warn'); }
+      if (overridesRes.error) { console.error('Error fetching overrides:', overridesRes.error); triggerToast('Could not load pricing rules', 'warn'); }
 
       setCustomers(custRes.data || []);
       setFills(fillRes.data || []);
       setOverrides(overridesRes.data || []);
     } catch (e) {
       console.error('Error loading datasets:', e);
+      triggerToast('Failed to sync with database. Check your connection and refresh.', 'warn');
     } finally {
       setLoading(false);
     }
@@ -117,10 +122,14 @@ export default function App() {
   };
 
   const handleLogout = async () => {
-    await dbAPI.logout();
-    localStorage.removeItem('gloe_session_user');
-    setCurrentUser(null);
-    triggerToast('Logged out successfully');
+    try {
+      await dbAPI.logout();
+      localStorage.removeItem('gloe_session_user');
+      setCurrentUser(null);
+      triggerToast('Logged out successfully');
+    } catch (e) {
+      triggerToast('Logout failed. Please try again.', 'warn');
+    }
   };
 
   const handleLoginSuccess = (userSession) => {
@@ -194,7 +203,7 @@ export default function App() {
           />
         );
       case 'history':
-        return <FillHistory fills={fills} />;
+        return <FillHistory fills={fills} triggerToast={triggerToast} />;
       case 'alerts':
         return <Alerts customers={customers} fills={fills} />;
       case 'dashboard':

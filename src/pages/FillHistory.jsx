@@ -30,7 +30,7 @@ const getFillShift = (f) => {
   return getShiftType(f.ts);
 };
 
-export default function FillHistory({ fills }) {
+export default function FillHistory({ fills, triggerToast }) {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [selectedMachine, setSelectedMachine] = useState('all');
@@ -167,6 +167,7 @@ export default function FillHistory({ fills }) {
       URL.revokeObjectURL(url);
     } catch (err) {
       console.error('CSV export failed:', err);
+      triggerToast('CSV export failed. Please try again.', 'warn');
     }
   };
 
