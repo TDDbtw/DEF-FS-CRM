@@ -257,10 +257,10 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
     if (logsErr) {
       triggerToast('Could not determine shift from logs. Defaulting to time-based.', 'warn');
     }
-    const employeeStarts = (logs || [])
-      .filter(l => l.employee_name === currentUser?.name && l.type === 'start')
+    const allStarts = (logs || [])
+      .filter(l => l.type === 'start')
       .sort((a, b) => new Date(b.created_at) - new Date(b.created_at));
-    const latestStart = employeeStarts[0];
+    const latestStart = allStarts[0];
 
     let shiftType;
     if (latestStart) {
