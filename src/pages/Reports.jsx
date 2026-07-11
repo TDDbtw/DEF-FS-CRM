@@ -15,14 +15,11 @@ const getShiftType = (ts) => {
 
 const getShiftDay = (ts, shiftType) => {
   const d = new Date(ts);
-  const totalMin = d.getHours() * 60 + d.getMinutes();
-  const startMin = SHIFT_START * 60;
-  if (totalMin < startMin + SHIFT_GRACE || (shiftType === 'night' && totalMin < startMin + SHIFT_GRACE + 60)) {
-    d.setDate(d.getDate() - 1);
-  }
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
+  const offsetMinutes = (SHIFT_START * 60) + SHIFT_GRACE + (shiftType === 'night' ? 60 : 0);
+  const shiftD = new Date(d.getTime() - offsetMinutes * 60000);
+  const y = shiftD.getFullYear();
+  const m = String(shiftD.getMonth() + 1).padStart(2, '0');
+  const day = String(shiftD.getDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
 };
 
