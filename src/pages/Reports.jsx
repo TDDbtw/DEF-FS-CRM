@@ -32,7 +32,12 @@ const getFillShift = (f) => {
   return getShiftType(f.ts);
 };
 
-const fmtDate = (d) => d.toISOString().split('T')[0];
+const fmtDate = (d) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
 const todayStr = fmtDate(new Date());
 
 const presets = [
@@ -67,26 +72,23 @@ export default function Reports({ fills }) {
   };
 
   const filtered = useMemo(() => {
-    const from = fromDate ? new Date(fromDate) : null;
-    const to = toDate ? new Date(toDate + 'T23:59:59') : null;
+    // Shift-aware boundaries: a "day" runs from 9 AM to next-day 9 AM.
+    // fromDate 9AM → toDate next-day 9AM captures complete night shifts that cross midnight.
+    const from = fromDate ? new Date(fromDate + 'T09:00:00') : null;
+    const toBase = toDate ? new Date(toDate + 'T09:00:00') : null;
+    if (toBase) toBase.setDate(toBase.getDate() + 1); // advance to next day's 9 AM
+    const to = toBase;
+
     return fills.filter(f => {
-      const d = new Date(f.ts);
       const shiftType = getFillShift(f);
-      const shiftDay = getShiftDay(f.ts, shiftType);
-      if (selectedShift !== 'all') {
-        if (shiftType !== selectedShift) return false;
-        if (selectedShift === 'night') {
-          const sd = new Date(shiftDay);
-          if (from && sd < from) return false;
-          if (to && sd > to) return false;
-        } else {
-          if (from && d < from) return false;
-          if (to && d > to) return false;
-        }
-      } else {
-        if (from && d < from) return false;
-        if (to && d > to) return false;
-      }
+      // Compare using the shift day (the calendar date this fill "belongs to" per shift rules),
+      // not the raw timestamp — this ensures night-shift fills after midnight map to the right day.
+      const sd = getShiftDay(f.ts, shiftType);
+      const shiftDayDate = new Date(sd + 'T09:00:00'); // shift day starts at 9 AM
+
+      if (from && shiftDayDate < from) return false;
+      if (to   && shiftDayDate >= to)  return false;
+      if (selectedShift !== 'all' && shiftType !== selectedShift) return false;
       if (selectedEmployee !== 'all' && f.employee !== selectedEmployee) return false;
       if (f.entry_type && f.entry_type !== 'sale') return false;
       return true;
