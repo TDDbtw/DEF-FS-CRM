@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { MACHINES } from '../config/machines';
-import { Filter, Download, TrendingUp, Fuel, Users, CreditCard, DollarSign, Sun, ArrowUp, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Filter, Download, TrendingUp, Fuel, Users, CreditCard, DollarSign, Sun, ArrowUp, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import { SHIFT_START, SHIFT_END, SHIFT_GRACE } from '../config/constants';
 
 const machineList = Object.values(MACHINES);
@@ -37,6 +37,7 @@ const todayStr = fmtDate(new Date());
 
 const presets = [
   { label: 'Today', range: () => ({ from: todayStr, to: todayStr }) },
+  { label: 'Yesterday', range: () => { const d = new Date(); d.setDate(d.getDate() - 1); const s = fmtDate(d); return { from: s, to: s }; }},
   { label: 'This Week', range: () => { const d = new Date(); d.setDate(d.getDate() - d.getDay()); return { from: fmtDate(d), to: todayStr }; }},
   { label: 'This Month', range: () => { const d = new Date(); d.setDate(1); return { from: fmtDate(d), to: todayStr }; }},
   { label: 'Last Month', range: () => { const d = new Date(); d.setMonth(d.getMonth() - 1); d.setDate(1); const e = new Date(); e.setDate(0); return { from: fmtDate(d), to: fmtDate(e) }; }},
@@ -49,7 +50,21 @@ export default function Reports({ fills }) {
   const [selectedEmployee, setSelectedEmployee] = useState('all');
   const [selectedShift, setSelectedShift] = useState('all');
   const [shiftPage, setShiftPage] = useState(0);
+  const [groupByDay, setGroupByDay] = useState(false);
+  const [showCustom, setShowCustom] = useState(false);
   const perPage = 6;
+
+  const shiftDay = (dir) => {
+    const f = new Date(fromDate);
+    const t = new Date(toDate);
+    f.setDate(f.getDate() + dir);
+    t.setDate(t.getDate() + dir);
+    const cap = new Date();
+    if (t > cap) return;
+    setFromDate(fmtDate(f));
+    setToDate(fmtDate(t));
+    setShiftPage(0);
+  };
 
   const filtered = useMemo(() => {
     const from = fromDate ? new Date(fromDate) : null;
@@ -139,6 +154,18 @@ export default function Reports({ fills }) {
     return Object.entries(days).sort((a, b) => b[0].localeCompare(a[0]));
   }, [filtered]);
 
+  const dailyTotals = useMemo(() => {
+    return shiftDays.map(([day, s]) => ({
+      day,
+      count: s.morning.count + s.night.count,
+      litres: s.morning.litres + s.night.litres,
+      amount: s.morning.amount + s.night.amount,
+      cash: s.morning.cash + s.night.cash,
+      gpay: s.morning.gpay + s.night.gpay,
+      credit: s.morning.credit + s.night.credit,
+    }));
+  }, [shiftDays]);
+
   const paginatedShiftDays = shiftDays.slice(shiftPage * perPage, (shiftPage + 1) * perPage);
   const totalShiftPages = Math.ceil(shiftDays.length / perPage);
 
@@ -186,21 +213,42 @@ export default function Reports({ fills }) {
 
       {/* ── Filters ── */}
       <div className="card card-pad" style={{ marginBottom: '16px', position: 'sticky', top: '0', zIndex: 10, borderBottom: '1px solid var(--border)' }}>
-        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '10px' }}>
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '10px', alignItems: 'center' }}>
           {presets.map(p => (
             <button key={p.label} onClick={() => handlePreset(p.range)} className="btn btn-sm btn-outline">{p.label}</button>
           ))}
-          <button onClick={resetAll} className="btn btn-sm btn-outline"><Filter size={12} /> Reset</button>
+          <button
+            onClick={() => setShowCustom(v => !v)}
+            className={`btn btn-sm ${showCustom ? 'btn-primary' : 'btn-outline'}`}
+            title="Custom date range"
+          >
+            <Filter size={12} /> Custom
+          </button>
+          <button onClick={resetAll} className="btn btn-sm btn-outline">Reset</button>
+          <span style={{ flex: 1 }} />
+          <button onClick={() => shiftDay(-1)} className="btn btn-sm btn-outline" title="Previous day"><ChevronLeft size={14} /></button>
+          <button onClick={() => shiftDay(1)} className="btn btn-sm btn-outline" title="Next day"><ChevronRight size={14} /></button>
+          <button
+            onClick={() => setGroupByDay(v => !v)}
+            className={`btn btn-sm ${groupByDay ? 'btn-primary' : 'btn-outline'}`}
+            title="Toggle per-business-day view"
+          >
+            <Calendar size={14} /> Day
+          </button>
         </div>
+        {showCustom && (
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: '10px' }}>
+            <div className="fg" style={{ minWidth: '130px', flex: 1 }}>
+              <label style={labelStyle}>From</label>
+              <input type="date" value={fromDate} onChange={e => { setFromDate(e.target.value); setShiftPage(0); }} style={inputStyle} />
+            </div>
+            <div className="fg" style={{ minWidth: '130px', flex: 1 }}>
+              <label style={labelStyle}>To</label>
+              <input type="date" value={toDate} onChange={e => { setToDate(e.target.value); setShiftPage(0); }} style={inputStyle} />
+            </div>
+          </div>
+        )}
         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-          <div className="fg" style={{ minWidth: '130px', flex: 1 }}>
-            <label style={labelStyle}>From</label>
-            <input type="date" value={fromDate} onChange={e => { setFromDate(e.target.value); setShiftPage(0); }} style={inputStyle} />
-          </div>
-          <div className="fg" style={{ minWidth: '130px', flex: 1 }}>
-            <label style={labelStyle}>To</label>
-            <input type="date" value={toDate} onChange={e => { setToDate(e.target.value); setShiftPage(0); }} style={inputStyle} />
-          </div>
           <div className="fg" style={{ minWidth: '120px', flex: 1 }}>
             <label style={labelStyle}>Employee</label>
             <select value={selectedEmployee} onChange={e => { setSelectedEmployee(e.target.value); setShiftPage(0); }} style={inputStyle}>
@@ -215,6 +263,11 @@ export default function Reports({ fills }) {
               <option value="morning">Morning (9AM–9PM)</option>
               <option value="night">Night (9PM–9AM)</option>
             </select>
+          </div>
+          <div style={{ fontSize: '12px', color: 'var(--text-3)', lineHeight: '36px' }}>
+            {fromDate === toDate
+              ? fmtDay(fromDate)
+              : `${fmtDay(fromDate)} – ${fmtDay(toDate)}`}
           </div>
         </div>
       </div>
@@ -234,9 +287,9 @@ export default function Reports({ fills }) {
         ))}
       </div>
 
-      {/* ── Shift Summary ── */}
+      {/* ── Sales by Shift ── */}
       <div className="card card-pad" style={{ marginBottom: '16px' }}>
-        <h2 style={sectionTitle}><Sun size={16} /> Sales by Shift</h2>
+        <h2 style={sectionTitle}><Sun size={16} /> Sales by Shift {groupByDay && <span style={{ fontSize: '11px', color: 'var(--text-3)', fontWeight: 400 }}>(per business day)</span>}</h2>
         {filtered.length === 0 ? (
           <div className="card-pad" style={{ textAlign: 'center', color: 'var(--text-3)' }}>No transactions</div>
         ) : (
@@ -244,7 +297,7 @@ export default function Reports({ fills }) {
             <table style={tableStyle}>
               <thead>
                 <tr>
-                  <th style={thStyle}>Shift</th>
+                  <th style={thStyle}>{groupByDay ? 'Business Day' : 'Shift'}</th>
                   <th style={{ ...thStyle, textAlign: 'right' }}>Fills</th>
                   <th style={{ ...thStyle, textAlign: 'right' }}>Litres</th>
                   <th style={{ ...thStyle, textAlign: 'right' }}>Revenue</th>
@@ -254,26 +307,40 @@ export default function Reports({ fills }) {
                 </tr>
               </thead>
               <tbody>
-                {[['morning', 'Morning (9AM–9PM)'], ['night', 'Night (9PM–9AM)']].map(([key, label]) => {
-                  const s = shiftTotals[key];
-                  if (s.count === 0) return null;
-                  return (
-                    <tr key={key}>
-                      <td style={{ ...tdStyle, fontWeight: '500' }}>{label}</td>
-                      <td style={{ ...tdStyle, textAlign: 'right' }}>{s.count}</td>
-                      <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'var(--mono)' }}>{fmt(s.litres)}</td>
-                      <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'var(--mono)' }}>{formatINR(s.amount)}</td>
-                      <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'var(--mono)' }}>{formatINR(s.cash)}</td>
-                      <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'var(--mono)' }}>{formatINR(s.gpay)}</td>
-                      <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'var(--mono)' }}>{formatINR(s.credit)}</td>
+                {groupByDay ? (
+                  dailyTotals.map((d, i) => (
+                    <tr key={d.day} style={i % 2 === 0 ? { background: 'var(--bg-alt)' } : {}}>
+                      <td style={{ ...tdStyle, fontWeight: '500', whiteSpace: 'nowrap' }}>{fmtDay(d.day)}</td>
+                      <td style={{ ...tdStyle, textAlign: 'right' }}>{d.count}</td>
+                      <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'var(--mono)' }}>{fmt(d.litres)}</td>
+                      <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'var(--mono)' }}>{formatINR(d.amount)}</td>
+                      <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'var(--mono)' }}>{formatINR(d.cash)}</td>
+                      <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'var(--mono)' }}>{formatINR(d.gpay)}</td>
+                      <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'var(--mono)' }}>{formatINR(d.credit)}</td>
                     </tr>
-                  );
-                })}
+                  ))
+                ) : (
+                  [['morning', 'Morning (9AM–9PM)'], ['night', 'Night (9PM–9AM)']].map(([key, label]) => {
+                    const s = shiftTotals[key];
+                    if (s.count === 0) return null;
+                    return (
+                      <tr key={key}>
+                        <td style={{ ...tdStyle, fontWeight: '500' }}>{label}</td>
+                        <td style={{ ...tdStyle, textAlign: 'right' }}>{s.count}</td>
+                        <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'var(--mono)' }}>{fmt(s.litres)}</td>
+                        <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'var(--mono)' }}>{formatINR(s.amount)}</td>
+                        <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'var(--mono)' }}>{formatINR(s.cash)}</td>
+                        <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'var(--mono)' }}>{formatINR(s.gpay)}</td>
+                        <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'var(--mono)' }}>{formatINR(s.credit)}</td>
+                      </tr>
+                    );
+                  })
+                )}
                 <tr style={{ background: 'var(--bg)' }}>
-                  <td style={{ ...tdStyle, fontWeight: '600' }}>Day Total</td>
-                  <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600' }}>{summary.count}</td>
-                  <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600', fontFamily: 'var(--mono)' }}>{fmt(summary.litres)}</td>
-                  <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600', fontFamily: 'var(--mono)' }}>{formatINR(summary.amount)}</td>
+                  <td style={{ ...tdStyle, fontWeight: '600' }}>Total</td>
+                  <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600' }}>{shiftTotals.morning.count + shiftTotals.night.count}</td>
+                  <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600', fontFamily: 'var(--mono)' }}>{fmt(shiftTotals.morning.litres + shiftTotals.night.litres)}</td>
+                  <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600', fontFamily: 'var(--mono)' }}>{formatINR(shiftTotals.morning.amount + shiftTotals.night.amount)}</td>
                   <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600', fontFamily: 'var(--mono)' }}>{formatINR(shiftTotals.morning.cash + shiftTotals.night.cash)}</td>
                   <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600', fontFamily: 'var(--mono)' }}>{formatINR(shiftTotals.morning.gpay + shiftTotals.night.gpay)}</td>
                   <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600', fontFamily: 'var(--mono)' }}>{formatINR(shiftTotals.morning.credit + shiftTotals.night.credit)}</td>
