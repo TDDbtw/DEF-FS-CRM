@@ -26,7 +26,11 @@ const getShiftDay = (ts, shiftType) => {
   return `${y}-${m}-${day}`;
 };
 
-const getFillShift = (f) => getShiftType(f.ts);
+const getFillShift = (f) => {
+  const s = f.shift;
+  if (s === 'morning' || s === 'night') return s;
+  return getShiftType(f.ts);
+};
 
 const fmtDate = (d) => d.toISOString().split('T')[0];
 const todayStr = fmtDate(new Date());

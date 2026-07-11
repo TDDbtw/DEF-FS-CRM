@@ -24,7 +24,11 @@ const getShiftDay = (ts, shiftType) => {
   return `${y}-${m}-${day}`;
 };
 
-const getFillShift = (f) => getShiftType(f.ts);
+const getFillShift = (f) => {
+  const s = f.shift;
+  if (s === 'morning' || s === 'night') return s;
+  return getShiftType(f.ts);
+};
 
 export default function FillHistory({ fills, triggerToast }) {
   const [dateFrom, setDateFrom] = useState('');
