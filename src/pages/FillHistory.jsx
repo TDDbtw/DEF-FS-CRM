@@ -15,7 +15,7 @@ const getShiftDay = (ts, shiftType) => {
   const d = new Date(ts);
   const totalMin = d.getHours() * 60 + d.getMinutes();
   const startMin = SHIFT_START * 60;
-  if (totalMin < startMin || (shiftType === 'night' && totalMin < startMin + SHIFT_GRACE + 60)) {
+  if (totalMin < startMin + SHIFT_GRACE || (shiftType === 'night' && totalMin < startMin + SHIFT_GRACE + 60)) {
     d.setDate(d.getDate() - 1);
   }
   const y = d.getFullYear();
