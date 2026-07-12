@@ -76,6 +76,7 @@ export default function FillHistory({ fills, triggerToast }) {
   const [selectedType, setSelectedType] = useState('all');
   const [selectedShift, setSelectedShift] = useState('all');
   const [showCustom, setShowCustom] = useState(false);
+  const [activePreset, setActivePreset] = useState('Today');
 
   const employees = [...new Set(fills.map(f => f.employee))].sort();
 
@@ -115,7 +116,7 @@ export default function FillHistory({ fills, triggerToast }) {
     setDateTo(fmtDate(t));
   };
 
-  const handlePreset = (fn) => { const { from, to } = fn(); setDateFrom(from); setDateTo(to); };
+  const handlePreset = (fn, label) => { const { from, to } = fn(); setDateFrom(from); setDateTo(to); setActivePreset(label); };
 
   const clearFilters = () => {
     setDateFrom(todayStr);
@@ -125,6 +126,7 @@ export default function FillHistory({ fills, triggerToast }) {
     setSelectedType('all');
     setSelectedShift('all');
     setShowCustom(false);
+    setActivePreset('Today');
   };
 
   const isDefaultRange = dateFrom === todayStr && dateTo === todayStr;
@@ -213,9 +215,9 @@ export default function FillHistory({ fills, triggerToast }) {
           {presets.map(p => (
             <button
               key={p.label}
-              onClick={() => handlePreset(p.range)}
+              onClick={() => handlePreset(p.range, p.label)}
               className="btn btn-sm btn-outline"
-              style={dateFrom === dateTo && fmtDate(new Date(p.range().from + 'T12:00:00')) === dateFrom ? { background: 'var(--green-soft)', color: 'var(--green)', borderColor: 'var(--green)' } : {}}
+              style={activePreset === p.label ? { background: 'var(--green-soft)', color: 'var(--green)', borderColor: 'var(--green)' } : {}}
             >
               {p.label}
             </button>
