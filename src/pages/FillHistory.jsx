@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Download, Calendar, X, ChevronLeft, ChevronRight, Filter } from 'lucide-react';
 import { MACHINES } from '../config/machines';
 import { SHIFT_START, SHIFT_END, SHIFT_GRACE, EMPLOYEE_INITIALS } from '../config/constants';
+import * as XLSX from 'xlsx';
 
 const getShiftType = (ts) => {
   const d = new Date(ts);
@@ -132,7 +133,7 @@ export default function FillHistory({ fills, triggerToast }) {
   const isDefaultRange = dateFrom === todayStr && dateTo === todayStr;
   const hasFilters = !isDefaultRange || selectedMachine !== 'all' || selectedEmployee !== 'all' || selectedType !== 'all' || selectedShift !== 'all';
 
-  const exportCSV = () => {
+  const exportXLSX = () => {
     if (filteredFills.length === 0) return;
 
     try {
@@ -147,8 +148,11 @@ export default function FillHistory({ fills, triggerToast }) {
         const tots = Object.entries(f.totalizers || {})
           .map(([k, v]) => `${k.toUpperCase()}:${v}`)
           .join(' | ');
+        const isTest = f.entry_type === 'test';
         return [
-          f.entry_type || 'sale', f.driver, f.vehicle,
+          f.entry_type || 'sale',
+          isTest ? 'Test' : f.driver,
+          f.vehicle,
           MACHINES[f.machine]?.name || f.machine.toUpperCase(),
           f.company || '', f.driver_ph || '', f.odo || '',
           new Date(f.ts).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }).replace(' ', '-'),
@@ -158,33 +162,34 @@ export default function FillHistory({ fills, triggerToast }) {
           f.payment == 'Cash + GPay' ? 'C+GPAY' : f.payment,
           f.payment == 'Cash + GPay' ? `${f.split_cash} + ${f.split_gpay}` : '',
           EMPLOYEE_INITIALS[f.employee?.toLowerCase()] || f.employee,
-          f.bill_type ? ((f.bill_type || 'gst') === 'gst' ? 'GST bill' : 'non GST') : '',
+          isTest ? 'Test' : (f.bill_type ? ((f.bill_type || 'gst') === 'gst' ? 'GST bill' : 'non GST') : ''),
           f.discount, f.split_cash || '', f.split_gpay || '',
           f.shift, f.state, f.co_ph || '', tots, f.notes || ''
         ];
       });
 
-      const csvContent = '\uFEFF' + [
-        headers.map(h => `"${h}"`).join(','),
-        ...rows.map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','))
-      ].join('\n');
+      const wsData = [headers, ...rows];
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
 
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
+      // Auto width: measure max content length per column
+      const colWidths = headers.map((h, colIdx) => {
+        const lengths = wsData.map(row => String(row[colIdx] ?? '').length);
+        const max = Math.max(...lengths, h.length);
+        return { wch: Math.min(max + 2, 40) }; // +2 padding, cap at 40 chars
+      });
+      ws['!cols'] = colWidths;
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Fills');
+
       const from = dateFrom || 'start';
       const to = dateTo || 'end';
       const mach = selectedMachine !== 'all' ? `_${selectedMachine}` : '';
       const emp = selectedEmployee !== 'all' ? `_${selectedEmployee.replace(/\s+/g, '_')}` : '';
-      link.href = url;
-      link.download = `fills${mach}${emp}_${from}_to_${to}.csv`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      XLSX.writeFile(wb, `fills${mach}${emp}_${from}_to_${to}.xlsx`);
     } catch (err) {
-      console.error('CSV export failed:', err);
-      triggerToast('CSV export failed. Please try again.', 'warn');
+      console.error('XLSX export failed:', err);
+      triggerToast('XLSX export failed. Please try again.', 'warn');
     }
   };
 
@@ -198,12 +203,12 @@ export default function FillHistory({ fills, triggerToast }) {
         </div>
         <button
           className="btn btn-outline"
-          onClick={exportCSV}
+          onClick={exportXLSX}
           disabled={filteredFills.length === 0}
           style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
         >
           <Download size={15} />
-          Export CSV
+          Export Excel
         </button>
       </div>
 
