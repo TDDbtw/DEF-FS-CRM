@@ -12,10 +12,14 @@ const getShiftType = (ts) => {
   return totalMin >= startMin + SHIFT_GRACE && totalMin < endMin + SHIFT_GRACE ? 'morning' : 'night';
 };
 
-const getShiftDay = (ts, shiftType) => {
+const getShiftDay = (ts) => {
   const d = new Date(ts);
-  const offsetMinutes = (SHIFT_START * 60) + SHIFT_GRACE + (shiftType === 'night' ? 60 : 0);
-  const shiftD = new Date(d.getTime() - offsetMinutes * 60000);
+  const totalMin = d.getHours() * 60 + d.getMinutes();
+  const startMin = SHIFT_START * 60;
+  const shiftD = new Date(d);
+  if (totalMin < startMin) {
+    shiftD.setDate(shiftD.getDate() - 1);
+  }
   const y = shiftD.getFullYear();
   const m = String(shiftD.getMonth() + 1).padStart(2, '0');
   const day = String(shiftD.getDate()).padStart(2, '0');
@@ -91,7 +95,7 @@ export default function FillHistory({ fills, triggerToast }) {
     const to = toBase;
 
     const shiftType = getFillShift(f);
-    const sd = getShiftDay(f.ts, shiftType);
+    const sd = getShiftDay(f.ts);
     const shiftDayDate = new Date(sd + 'T09:00:00'); // shift day starts at 9 AM
 
     if (from && shiftDayDate < from) return false;
@@ -100,10 +104,7 @@ export default function FillHistory({ fills, triggerToast }) {
     if (selectedMachine !== 'all' && f.machine !== selectedMachine) return false;
     if (selectedEmployee !== 'all' && f.employee !== selectedEmployee) return false;
     if (selectedType !== 'all' && (f.entry_type || 'sale') !== selectedType) return false;
-    
-    // DEBUG LOG
-    console.log(`Fill: ${f.ts} | Local: ${new Date(f.ts).toLocaleString('en-IN')} | ShiftDay: ${sd} | shiftDayDate: ${shiftDayDate.toLocaleString('en-IN')} | from: ${from ? from.toLocaleString('en-IN') : 'null'}`);
-    
+
     return true;
   });
 
@@ -456,3 +457,4 @@ export default function FillHistory({ fills, triggerToast }) {
 const lbl = { fontSize: '11px', fontWeight: '500', color: 'var(--text-2)', marginBottom: '4px', display: 'block' };
 const inp = { width: '100%', padding: '7px 10px', border: '1px solid var(--border-mid)', borderRadius: 'var(--radius)', fontSize: '12px', color: 'var(--text)', background: 'var(--surface)', outline: 'none' };
 const divider = { width: '1px', background: 'var(--border)', alignSelf: 'stretch', margin: '0 2px' };
+
