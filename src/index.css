@@ -5,6 +5,7 @@
   --cb: #0c5aa6; --cb-soft: #edf4ff; --cb-mid: #b8d4f5;
   --green: #1a6e3c; --green-soft: #edf7f2;
   --warn: #d97706; --warn-soft: #fffbeb;
+  --gulf: #d97706; --gulf-soft: #fffbeb;
   --danger: #dc2626; --danger-soft: #fff0f0;
   --ok: #059669; --ok-soft: #ecfdf5;
   --bg: #f5f5f3; --surface: #ffffff;
@@ -627,6 +628,26 @@ tr:hover td {
 .toast.show { 
   transform: translateY(0); 
   opacity: 1; 
+}
+
+/* Pill toggle buttons */
+.pill-group { display: flex; gap: 4px; flex-wrap: wrap; }
+.pill-group button.pill {
+  background: var(--surface);
+  border: 1px solid var(--border-mid);
+  border-radius: 20px;
+  padding: 3px 14px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--text-2);
+  transition: all 0.2s;
+}
+.pill-group button.pill:hover { background: var(--bg); }
+.pill-group button.pill.pill-active {
+  background: var(--green);
+  border-color: var(--green);
+  color: #fff;
 }
 
 /* Pill badges */

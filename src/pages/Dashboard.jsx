@@ -1,3 +1,5 @@
+import { useState, useMemo, useEffect } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { MACHINES } from '../config/machines';
 import { ACTIVE_DAYS } from '../config/constants';
 import { getShiftDay, getTodayShiftDay } from '../config/shiftDay';
@@ -21,9 +23,24 @@ export default function Dashboard({ customers, fills }) {
     }).length;
   };
 
+  const today = new Date();
+  const [chartMonth, setChartMonth] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
+  const [chartMode, setChartMode] = useState('revenue');
+  const [chartDayMode, setChartDayMode] = useState('calendar');
+  const [chartMachine, setChartMachine] = useState('all');
+  const [page, setPage] = useState(0);
+  const pageSize = 10;
+
   // Filter transactions for today's business day
-  const todayFills = fills.filter(f => getShiftDay(f.ts) === todayShiftDay);
-  
+  const todayFills = useMemo(() => fills.filter(f => getShiftDay(f.ts) === todayShiftDay), [fills, todayShiftDay]);
+  const sortedTodayFills = useMemo(
+    () => [...todayFills].sort((a, b) => new Date(b.ts) - new Date(a.ts)),
+    [todayFills]
+  );
+  const totalPages = Math.max(1, Math.ceil(sortedTodayFills.length / pageSize));
+  const pagedFills = sortedTodayFills.slice(page * pageSize, (page + 1) * pageSize);
+  useEffect(() => { setPage(0); }, [todayFills]);
+
   // Calculate today's stats
   const totalFillsCount = todayFills.length;
   const totalLitres = todayFills.reduce((sum, f) => sum + (f.litres || 0), 0);
@@ -38,6 +55,38 @@ export default function Dashboard({ customers, fills }) {
   const gpayAmt = todayFills.filter(f => f.payment === 'GPay').reduce((sum, f) => sum + (f.final || 0), 0);
   const creditAmt = todayFills.filter(f => f.payment === 'Credit').reduce((sum, f) => sum + (f.final || 0), 0);
   const totalPaymentAmt = cashAmt + gpayAmt + creditAmt || 1;
+
+  const monthData = useMemo(() => {
+    const year = chartMonth.getFullYear();
+    const month = chartMonth.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const daily = [];
+    let maxVal = 0;
+    for (let d = 1; d <= daysInMonth; d++) {
+      const shiftDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const dayFills = fills.filter(f => {
+        if (chartMachine !== 'all' && f.machine !== chartMachine) return false;
+        if (chartDayMode === 'company') return getShiftDay(f.ts) === shiftDate;
+        const ft = new Date(f.ts);
+        return ft.getFullYear() === year && ft.getMonth() === month && ft.getDate() === d;
+      });
+      const val = chartMode === 'revenue'
+        ? dayFills.reduce((s, f) => s + (f.final || 0), 0)
+        : dayFills.reduce((s, f) => s + (f.litres || 0), 0);
+      daily.push({ day: d, value: val });
+      if (val > maxVal) maxVal = val;
+    }
+    return { daily, maxVal };
+  }, [fills, chartMonth, chartMode, chartDayMode, chartMachine]);
+
+  const fmtMonth = (d) =>
+    d.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+
+  const prevMonth = () => setChartMonth(new Date(chartMonth.getFullYear(), chartMonth.getMonth() - 1, 1));
+  const nextMonth = () => {
+    const next = new Date(chartMonth.getFullYear(), chartMonth.getMonth() + 1, 1);
+    if (next <= new Date()) setChartMonth(next);
+  };
 
   return (
     <div>
@@ -145,6 +194,182 @@ export default function Dashboard({ customers, fills }) {
         </div>
       </div>
 
+      {/* ── Monthly Sales Chart ── */}
+      <div className="card card-pad" style={{ marginBottom: '20px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+          <button onClick={prevMonth} className="btn btn-sm btn-outline"><ChevronLeft size={14} /></button>
+          <span style={{ fontWeight: '600', fontSize: '14px', flex: 1 }}>{fmtMonth(chartMonth)}</span>
+          <button onClick={nextMonth} className="btn btn-sm btn-outline" disabled={chartMonth.getMonth() >= today.getMonth() && chartMonth.getFullYear() >= today.getFullYear()}>
+            <ChevronRight size={14} />
+          </button>
+          <div
+            onClick={() => setChartDayMode(chartDayMode === 'calendar' ? 'company' : 'calendar')}
+            style={{
+              position: 'relative',
+              display: 'flex',
+              alignItems: 'center',
+              padding: '2px',
+              borderRadius: '20px',
+              background: 'var(--bg)',
+              cursor: 'pointer',
+              fontSize: '10px',
+              fontWeight: '600',
+              letterSpacing: '0.3px',
+              textTransform: 'uppercase',
+              userSelect: 'none',
+              width: '108px',
+              height: '26px',
+              flexShrink: 0,
+            }}
+          >
+            <div
+              style={{
+                position: 'absolute',
+                top: '2px',
+                left: chartDayMode === 'calendar' ? '2px' : 'calc(50% + 1px)',
+                width: 'calc(50% - 2px)',
+                height: 'calc(100% - 4px)',
+                background: 'var(--surface)',
+                borderRadius: '20px',
+                boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
+                transition: 'left 0.25s ease',
+                zIndex: 0,
+              }}
+            />
+            <span
+              style={{
+                flex: 1,
+                textAlign: 'center',
+                position: 'relative',
+                zIndex: 1,
+                color: chartDayMode === 'calendar' ? 'var(--text-1)' : 'var(--text-3)',
+                transition: 'color 0.2s',
+              }}
+            >Day</span>
+            <span
+              style={{
+                flex: 1,
+                textAlign: 'center',
+                position: 'relative',
+                zIndex: 1,
+                color: chartDayMode === 'company' ? 'var(--text-1)' : 'var(--text-3)',
+                transition: 'color 0.2s',
+              }}
+            >Shift</span>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '14px', alignItems: 'center' }}>
+          <div
+            onClick={() => setChartMode(chartMode === 'revenue' ? 'litres' : 'revenue')}
+            style={{
+              position: 'relative',
+              display: 'flex',
+              alignItems: 'center',
+              padding: '2px',
+              borderRadius: '20px',
+              background: 'var(--bg)',
+              cursor: 'pointer',
+              fontSize: '10px',
+              fontWeight: '600',
+              letterSpacing: '0.3px',
+              textTransform: 'uppercase',
+              userSelect: 'none',
+              width: '100px',
+              height: '26px',
+              flexShrink: 0,
+            }}
+          >
+            <div
+              style={{
+                position: 'absolute',
+                top: '2px',
+                left: chartMode === 'revenue' ? '2px' : 'calc(50% + 1px)',
+                width: 'calc(50% - 2px)',
+                height: 'calc(100% - 4px)',
+                background: 'var(--surface)',
+                borderRadius: '20px',
+                boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
+                transition: 'left 0.25s ease',
+                zIndex: 0,
+              }}
+            />
+            <span style={{ flex: 1, textAlign: 'center', position: 'relative', zIndex: 1, color: chartMode === 'revenue' ? 'var(--text-1)' : 'var(--text-3)', transition: 'color 0.2s' }}>₹ Rev</span>
+            <span style={{ flex: 1, textAlign: 'center', position: 'relative', zIndex: 1, color: chartMode === 'litres' ? 'var(--text-1)' : 'var(--text-3)', transition: 'color 0.2s' }}>L Vol</span>
+          </div>
+          <div
+            style={{
+              position: 'relative',
+              display: 'flex',
+              alignItems: 'center',
+              padding: '2px',
+              borderRadius: '20px',
+              background: 'var(--bg)',
+              fontSize: '10px',
+              fontWeight: '600',
+              letterSpacing: '0.3px',
+              textTransform: 'uppercase',
+              userSelect: 'none',
+              height: '26px',
+              gap: '2px',
+            }}
+          >
+            {[{ id: 'all', label: 'All' }, { id: 'hp', label: 'HP' }, { id: 'cb', label: 'C Blue' }, { id: 'gulf', label: 'Gulf' }].map(m => {
+              const isActive = chartMachine === m.id;
+              const activeColor = m.id === 'hp' ? 'var(--hp)' : m.id === 'cb' ? 'var(--cb)' : m.id === 'gulf' ? 'var(--gulf)' : 'var(--green)';
+              return (
+                <div
+                  key={m.id}
+                  onClick={() => setChartMachine(m.id)}
+                  style={{
+                    position: 'relative',
+                    padding: '3px 12px',
+                    borderRadius: '20px',
+                    cursor: 'pointer',
+                    color: isActive ? '#fff' : 'var(--text-3)',
+                    background: isActive ? activeColor : 'transparent',
+                    transition: 'all 0.2s',
+                  }}
+                >{m.label}</div>
+              );
+            })}
+          </div>
+        </div>
+        <div style={{ overflowX: 'auto', paddingBottom: '4px' }}>
+          <div style={{ display: 'flex', gap: '3px', minWidth: Math.max(monthData.daily.length * 28, 300) }}>
+            {monthData.daily.map(({ day, value }) => {
+              const pct = monthData.maxVal > 0 ? (value / monthData.maxVal) * 100 : 0;
+              const dayOfWeek = new Date(chartMonth.getFullYear(), chartMonth.getMonth(), day).getDay();
+              const fmtVal = chartMode === 'revenue'
+                ? '₹' + Math.round(value).toLocaleString('en-IN')
+                : value.toFixed(1) + 'L';
+              const barColor = chartMachine !== 'all'
+                ? (chartMachine === 'hp' ? 'var(--hp)' : chartMachine === 'cb' ? 'var(--cb)' : 'var(--gulf)')
+                : (dayOfWeek === 0 || dayOfWeek === 6 ? 'var(--cb)' : 'var(--green)');
+              return (
+                <div key={day} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', minWidth: '24px' }}>
+                  <div style={{ fontSize: '9px', color: 'var(--text-3)', whiteSpace: 'nowrap' }}>
+                    {value > 0 ? fmtVal : ''}
+                  </div>
+                  <div style={{ width: '100%', height: '80px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', gap: '2px' }}>
+                    <div
+                      title={`${day} ${fmtMonth(chartMonth)}: ${fmtVal}`}
+                      style={{
+                        height: `${pct}%`,
+                        background: barColor,
+                        borderRadius: '3px 3px 0 0',
+                        minHeight: value > 0 ? '3px' : '0',
+                        transition: 'height 0.3s ease',
+                      }}
+                    />
+                  </div>
+                  <div style={{ fontSize: '9px', color: 'var(--text-3)', fontWeight: dayOfWeek === 0 || dayOfWeek === 6 ? '600' : '400' }}>{day}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
       {/* Today's Transactions Table */}
       <div className="card card-pad">
         <div className="section-label">Today's Shift Entries</div>
@@ -162,16 +387,14 @@ export default function Dashboard({ customers, fills }) {
               </tr>
             </thead>
             <tbody>
-              {todayFills.length === 0 ? (
+              {pagedFills.length === 0 ? (
                 <tr>
                   <td colSpan="7" style={{ textAlign: 'center', color: 'var(--text-3)', padding: '20px' }}>
                     No transactions recorded today.
                   </td>
                 </tr>
               ) : (
-                [...todayFills]
-                  .sort((a, b) => new Date(b.ts) - new Date(a.ts))
-                  .map((f) => (
+                pagedFills.map((f) => (
                     <tr key={f.id} style={{ borderBottom: '1px solid var(--border)' }}>
                       <td style={{ padding: '10px 12px', fontSize: '12px' }}>
                         {new Date(f.ts).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
@@ -198,8 +421,20 @@ export default function Dashboard({ customers, fills }) {
             </tbody>
           </table>
         </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0 0' }}>
+          <span style={{ fontSize: '12px', color: 'var(--text-3)' }}>
+            Showing {sortedTodayFills.length === 0 ? 0 : page * pageSize + 1}–{Math.min((page + 1) * pageSize, sortedTodayFills.length)} of {sortedTodayFills.length} entries
+          </span>
+          <div style={{ display: 'flex', gap: '6px' }}>
+            <button className="btn btn-sm btn-outline" disabled={page === 0} onClick={() => setPage(p => p - 1)}>Prev</button>
+            {Array.from({ length: totalPages }, (_, i) => (
+              <button key={i} className="btn btn-sm btn-outline" style={i === page ? { background: 'var(--green)', color: '#fff', borderColor: 'var(--green)' } : {}} onClick={() => setPage(i)}>{i + 1}</button>
+            ))}
+            <button className="btn btn-sm btn-outline" disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}>Next</button>
+          </div>
+        </div>
       </div>
-    </div>
   );
 }
 
