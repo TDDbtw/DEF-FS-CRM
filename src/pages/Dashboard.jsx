@@ -116,9 +116,7 @@ export default function Dashboard({ customers, fills }) {
         </div>
         <div className="stat-card">
           <div className="stat-label">Revenue Today</div>
-          <div className="stat-val" style={{ display: 'flex', alignItems: 'center' }}>
-            ₹{totalRevenue.toLocaleString('en-IN')}
-          </div>
+          <div className="stat-val">₹{totalRevenue.toLocaleString('en-IN')}</div>
           <div className="stat-sub">After auto discounts</div>
         </div>
         <div className={`stat-card ${alertsCount > 0 ? 'warn' : ''}`}>
