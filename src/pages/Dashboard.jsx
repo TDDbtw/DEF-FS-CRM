@@ -309,7 +309,7 @@ export default function Dashboard({ customers, fills }) {
               const pct = monthData.maxVal > 0 ? (value / monthData.maxVal) * 100 : 0;
               const dayOfWeek = new Date(chartMonth.getFullYear(), chartMonth.getMonth(), day).getDay();
               const fmtVal = chartMode === 'revenue'
-                ? '₹' + Math.round(value).toLocaleString('en-IN')
+                ? (value >= 100000 ? '₹' + (value / 100000).toFixed(1) + 'L' : value >= 1000 ? '₹' + (value / 1000).toFixed(1) + 'k' : '₹' + Math.round(value))
                 : value.toFixed(1) + 'L';
               const barColor = chartMachine !== 'all'
                 ? (chartMachine === 'hp' ? 'var(--hp)' : chartMachine === 'cb' ? 'var(--cb)' : 'var(--gulf)')
@@ -321,7 +321,7 @@ export default function Dashboard({ customers, fills }) {
                   </div>
                   <div style={{ width: '100%', height: '80px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', gap: '2px' }}>
                     <div
-                      title={`${day} ${fmtMonth(chartMonth)}: ${fmtVal}`}
+                      title={`${day} ${fmtMonth(chartMonth)}: ${chartMode === 'revenue' ? '₹' + Math.round(value).toLocaleString('en-IN') : value.toFixed(1) + 'L'}`}
                       style={{
                         height: `${pct}%`,
                         background: barColor,
