@@ -821,6 +821,9 @@ tr:hover td {
   .stats-row { 
     grid-template-columns: 1fr 1fr; 
   }
+  .stat-val {
+    font-size: 16px;
+  }
   
   .grid-responsive {
     grid-template-columns: 1fr !important;
