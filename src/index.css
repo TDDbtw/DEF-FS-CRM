@@ -833,3 +833,9 @@ tr:hover td {
     grid-template-columns: 1fr;
   }
 }
+
+.show-mobile { display: none; }
+@media (max-width: 768px) {
+  .show-desktop { display: none; }
+  .show-mobile { display: inline; }
+}

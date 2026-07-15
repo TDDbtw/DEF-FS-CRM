@@ -308,16 +308,24 @@ export default function Dashboard({ customers, fills }) {
             {monthData.daily.map(({ day, value }) => {
               const pct = monthData.maxVal > 0 ? (value / monthData.maxVal) * 100 : 0;
               const dayOfWeek = new Date(chartMonth.getFullYear(), chartMonth.getMonth(), day).getDay();
-              const fmtVal = chartMode === 'revenue'
-                ? (value >= 100000 ? '₹' + (value / 100000).toFixed(1) + 'L' : value >= 1000 ? '₹' + (value / 1000).toFixed(1) + 'k' : '₹' + Math.round(value))
-                : value.toFixed(1) + 'L';
               const barColor = chartMachine !== 'all'
                 ? (chartMachine === 'hp' ? 'var(--hp)' : chartMachine === 'cb' ? 'var(--cb)' : 'var(--gulf)')
                 : (dayOfWeek === 0 || dayOfWeek === 6 ? 'var(--cb)' : 'var(--green)');
               return (
                 <div key={day} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', minWidth: '24px' }}>
                   <div style={{ fontSize: '9px', color: 'var(--text-3)', whiteSpace: 'nowrap' }}>
-                    {value > 0 ? fmtVal : ''}
+                    {value > 0 ? (
+                      chartMode === 'revenue' ? (
+                        <>
+                          <span className="show-desktop">₹{Math.round(value).toLocaleString('en-IN')}</span>
+                          <span className="show-mobile">
+                            {value >= 100000 ? '₹' + (value / 100000).toFixed(1) + 'L' : value >= 1000 ? '₹' + (value / 1000).toFixed(1) + 'k' : '₹' + Math.round(value)}
+                          </span>
+                        </>
+                      ) : (
+                        value.toFixed(1) + 'L'
+                      )
+                    ) : ''}
                   </div>
                   <div style={{ width: '100%', height: '80px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', gap: '2px' }}>
                     <div
