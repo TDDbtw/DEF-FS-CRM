@@ -1,11 +1,10 @@
 import { MACHINES } from '../config/machines';
 import { ACTIVE_DAYS } from '../config/constants';
+import { getShiftDay, getTodayShiftDay } from '../config/shiftDay';
 
 export default function Dashboard({ customers, fills }) {
-  // Compute date boundary for today
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const todayStartMs = today.getTime();
+  // Business day boundary (9 AM cutoff), not plain calendar midnight.
+  const todayShiftDay = getTodayShiftDay();
 
   // Helper: customer status count
   const getAlertsCount = () => {
@@ -22,8 +21,8 @@ export default function Dashboard({ customers, fills }) {
     }).length;
   };
 
-  // Filter transactions for today
-  const todayFills = fills.filter(f => new Date(f.ts).getTime() >= todayStartMs);
+  // Filter transactions for today's business day
+  const todayFills = fills.filter(f => getShiftDay(f.ts) === todayShiftDay);
   
   // Calculate today's stats
   const totalFillsCount = todayFills.length;
@@ -203,3 +202,4 @@ export default function Dashboard({ customers, fills }) {
     </div>
   );
 }
+

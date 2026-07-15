@@ -1,44 +1,11 @@
 import { useState } from 'react';
 import { Download, Calendar, X, ChevronLeft, ChevronRight, Filter } from 'lucide-react';
 import { MACHINES } from '../config/machines';
-import { SHIFT_START, SHIFT_END, SHIFT_GRACE, EMPLOYEE_INITIALS } from '../config/constants';
+import { EMPLOYEE_INITIALS } from '../config/constants';
+import { getFillShift, getShiftDay, fmtDate, getTodayShiftDay } from '../config/shiftDay';
 import * as XLSX from 'xlsx';
 
-const getShiftType = (ts) => {
-  const d = new Date(ts);
-  const totalMin = d.getHours() * 60 + d.getMinutes();
-  const startMin = SHIFT_START * 60;
-  const endMin = SHIFT_END * 60;
-  return totalMin >= startMin + SHIFT_GRACE && totalMin < endMin + SHIFT_GRACE ? 'morning' : 'night';
-};
-
-const getShiftDay = (ts) => {
-  const d = new Date(ts);
-  const totalMin = d.getHours() * 60 + d.getMinutes();
-  const startMin = SHIFT_START * 60;
-  const shiftD = new Date(d);
-  if (totalMin < startMin) {
-    shiftD.setDate(shiftD.getDate() - 1);
-  }
-  const y = shiftD.getFullYear();
-  const m = String(shiftD.getMonth() + 1).padStart(2, '0');
-  const day = String(shiftD.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-};
-
-const getFillShift = (f) => {
-  const s = f.shift;
-  if (s === 'morning' || s === 'night') return s;
-  return getShiftType(f.ts);
-};
-
-const fmtDate = (d) => {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-};
-const todayStr = fmtDate(new Date());
+const todayStr = getTodayShiftDay();
 
 const fmtDay = (d) => {
   const dt = new Date(d + 'T09:00:00');
@@ -194,6 +161,27 @@ export default function FillHistory({ fills, triggerToast }) {
     }
   };
 
+  const exportCSV = () => {
+    if (filteredFills.length === 0) return;
+    try {
+      const headers = ['Type','Driver','Truck No','Machine','Customer','Mob','Odometer','Date','Litres','RATE','Amount','Final Collect','Payment','Employee','Bill','Discount','Split Cash','Split GPay','Shift','State','Company Phone','Totalizer Readings','Remarks'];
+      const rows = filteredFills.map(f => {
+        const tots = Object.entries(f.totalizers || {}).map(([k, v]) => `${k.toUpperCase()}:${v}`).join(' | ');
+        return [f.entry_type||'sale', f.driver, f.vehicle, MACHINES[f.machine]?.name||f.machine.toUpperCase(), f.company||'', f.driver_ph||'', f.odo||'', new Date(f.ts).toLocaleDateString('en-IN',{day:'numeric',month:'short'}).replace(' ','-'), f.litres, f.litres&&f.actual?Math.round(f.actual/f.litres):'', f.actual, f.final, f.payment, f.employee, f.bill_type?((f.bill_type||'gst')==='gst'?'GST bill':'non GST'):'', f.discount, f.split_cash||'', f.split_gpay||'', f.shift, f.state, f.co_ph||'', tots, f.notes||''];
+      });
+      const csv = '\uFEFF' + [headers.map(h=>`"${h}"`).join(','), ...rows.map(r=>r.map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(','))].join('\n');
+      const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const from = dateFrom||'start', to = dateTo||'end', mach = selectedMachine!=='all'?`_${selectedMachine}`:'', emp = selectedEmployee!=='all'?`_${selectedEmployee.replace(/\s+/g,'_')}`:'';
+      a.href = url; a.download = `fills${mach}${emp}_${from}_to_${to}.csv`;
+      a.click(); URL.revokeObjectURL(url);
+    } catch(err) {
+      console.error('CSV export failed:', err);
+      triggerToast('CSV export failed. Please try again.', 'warn');
+    }
+  };
+
   return (
     <div>
       {/* Page header */}
@@ -202,15 +190,26 @@ export default function FillHistory({ fills, triggerToast }) {
           <div className="page-title">Fill History</div>
           <div className="page-sub">Chronological list of all fuel entries</div>
         </div>
-        <button
-          className="btn btn-outline"
-          onClick={exportXLSX}
-          disabled={filteredFills.length === 0}
-          style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
-        >
-          <Download size={15} />
-          Export Excel
-        </button>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button
+            className="btn btn-outline"
+            onClick={exportXLSX}
+            disabled={filteredFills.length === 0}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <Download size={15} />
+            Export Excel
+          </button>
+          <button
+            className="btn btn-outline"
+            onClick={exportCSV}
+            disabled={filteredFills.length === 0}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <Download size={15} />
+            Export CSV
+          </button>
+        </div>
       </div>
 
       {/* Filter card */}
