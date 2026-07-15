@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { MACHINES } from '../config/machines';
 import { ACTIVE_DAYS } from '../config/constants';
-import { getShiftDay, getTodayShiftDay } from '../config/shiftDay';
+import { getShiftDay, getTodayShiftDay, getFillShift } from '../config/shiftDay';
 
 export default function Dashboard({ customers, fills }) {
   // Business day boundary (9 AM cutoff), not plain calendar midnight.
@@ -28,6 +28,7 @@ export default function Dashboard({ customers, fills }) {
   const [chartMode, setChartMode] = useState('revenue');
   const [chartDayMode, setChartDayMode] = useState('calendar');
   const [chartMachine, setChartMachine] = useState('all');
+  const [chartShift, setChartShift] = useState('all');
   const [page, setPage] = useState(0);
   const pageSize = 10;
 
@@ -66,7 +67,11 @@ export default function Dashboard({ customers, fills }) {
       const shiftDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
       const dayFills = fills.filter(f => {
         if (chartMachine !== 'all' && f.machine !== chartMachine) return false;
-        if (chartDayMode === 'company') return getShiftDay(f.ts) === shiftDate;
+        if (chartDayMode === 'company') {
+          if (getShiftDay(f.ts) !== shiftDate) return false;
+          if (chartShift !== 'all' && getFillShift(f) !== chartShift) return false;
+          return true;
+        }
         const ft = new Date(f.ts);
         return ft.getFullYear() === year && ft.getMonth() === month && ft.getDate() === d;
       });
@@ -77,7 +82,7 @@ export default function Dashboard({ customers, fills }) {
       if (val > maxVal) maxVal = val;
     }
     return { daily, maxVal };
-  }, [fills, chartMonth, chartMode, chartDayMode, chartMachine]);
+  }, [fills, chartMonth, chartMode, chartDayMode, chartMachine, chartShift]);
 
   const fmtMonth = (d) =>
     d.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
@@ -123,77 +128,6 @@ export default function Dashboard({ customers, fills }) {
         </div>
       </div>
 
-      {/* Progress Breakdown Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '20px' }} className="grid-responsive">
-        
-        {/* Fills by Machine */}
-        <div className="card card-pad">
-          <div className="section-label" style={{ marginBottom: '16px' }}>Today's Fills by Machine</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            {Object.values(MACHINES).map((m) => {
-              const machineFills = todayFills.filter(f => f.machine === m.id);
-              const count = machineFills.length;
-              const pct = Math.round((count / totalFillsForMachines) * 100);
-              const litresSum = machineFills.reduce((sum, f) => sum + (f.litres || 0), 0);
-              const revSum = machineFills.reduce((sum, f) => sum + (f.final || 0), 0);
-
-              return (
-                <div key={m.id}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '5px' }}>
-                    <span style={{ color: m.themeColor, fontWeight: '600' }}>{m.name}</span>
-                    <span className="mono" style={{ fontSize: '12px' }}>
-                      {count} fill{count !== 1 ? 's' : ''} · {litresSum.toFixed(1)}L · ₹{revSum.toLocaleString('en-IN')}
-                    </span>
-                  </div>
-                  <div style={{ height: '7px', background: 'var(--bg)', borderRadius: '4px', overflow: 'hidden' }}>
-                    <div 
-                      style={{ 
-                        height: '100%', 
-                        background: m.themeColor, 
-                        width: `${totalFillsCount > 0 ? pct : 0}%`,
-                        transition: 'width 0.4s ease-out'
-                      }} 
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Payments Breakdown */}
-        <div className="card card-pad">
-          <div className="section-label" style={{ marginBottom: '16px' }}>Payment Method Breakdown</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            {[
-              { label: 'Cash', color: '#1a6e3c', amount: cashAmt },
-              { label: 'GPay', color: '#0c5aa6', amount: gpayAmt },
-              { label: 'Credit', color: '#d97706', amount: creditAmt }
-            ].map((p) => {
-              const pct = Math.round((p.amount / totalPaymentAmt) * 100);
-              return (
-                <div key={p.label}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '5px' }}>
-                    <span style={{ color: p.color, fontWeight: '600' }}>{p.label}</span>
-                    <span className="mono" style={{ fontSize: '12px' }}>₹{p.amount.toLocaleString('en-IN')}</span>
-                  </div>
-                  <div style={{ height: '7px', background: 'var(--bg)', borderRadius: '4px', overflow: 'hidden' }}>
-                    <div 
-                      style={{ 
-                        height: '100%', 
-                        background: p.color, 
-                        width: `${totalRevenue > 0 ? pct : 0}%`,
-                        transition: 'width 0.4s ease-out'
-                      }} 
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
       {/* ── Monthly Sales Chart ── */}
       <div className="card card-pad" style={{ marginBottom: '20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
@@ -203,7 +137,11 @@ export default function Dashboard({ customers, fills }) {
             <ChevronRight size={14} />
           </button>
           <div
-            onClick={() => setChartDayMode(chartDayMode === 'calendar' ? 'company' : 'calendar')}
+            onClick={() => {
+              const next = chartDayMode === 'calendar' ? 'company' : 'calendar';
+              setChartDayMode(next);
+              if (next === 'calendar') setChartShift('all');
+            }}
             style={{
               position: 'relative',
               display: 'flex',
@@ -315,7 +253,7 @@ export default function Dashboard({ customers, fills }) {
           >
             {[{ id: 'all', label: 'All' }, { id: 'hp', label: 'HP' }, { id: 'cb', label: 'C Blue' }, { id: 'gulf', label: 'Gulf' }].map(m => {
               const isActive = chartMachine === m.id;
-              const activeColor = m.id === 'hp' ? 'var(--hp)' : m.id === 'cb' ? 'var(--cb)' : m.id === 'gulf' ? 'var(--gulf)' : 'var(--green)';
+              const activeColor = m.id === 'hp' ? 'var(--hp)' : m.id === 'cb' ? 'var(--cb)' : m.id === 'gulf' ? 'var(--gulf)' : 'var(--text)';
               return (
                 <div
                   key={m.id}
@@ -333,6 +271,39 @@ export default function Dashboard({ customers, fills }) {
               );
             })}
           </div>
+          {chartDayMode === 'company' && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                padding: '2px',
+                borderRadius: '20px',
+                background: 'var(--bg)',
+                fontSize: '10px',
+                fontWeight: '600',
+                letterSpacing: '0.3px',
+                textTransform: 'uppercase',
+                userSelect: 'none',
+                height: '26px',
+                gap: '2px',
+              }}
+            >
+              {[{ id: 'all', label: 'Both' }, { id: 'morning', label: 'Day' }, { id: 'night', label: 'Night' }].map(m => (
+                <div
+                  key={m.id}
+                  onClick={() => setChartShift(m.id)}
+                  style={{
+                    padding: '3px 12px',
+                    borderRadius: '20px',
+                    cursor: 'pointer',
+                    color: chartShift === m.id ? '#fff' : 'var(--text-3)',
+                    background: chartShift === m.id ? 'var(--cb)' : 'transparent',
+                    transition: 'all 0.2s',
+                  }}
+                >{m.label}</div>
+              ))}
+            </div>
+          )}
         </div>
         <div style={{ overflowX: 'auto', paddingBottom: '4px' }}>
           <div style={{ display: 'flex', gap: '3px', minWidth: Math.max(monthData.daily.length * 28, 300) }}>
@@ -363,6 +334,77 @@ export default function Dashboard({ customers, fills }) {
                     />
                   </div>
                   <div style={{ fontSize: '9px', color: 'var(--text-3)', fontWeight: dayOfWeek === 0 || dayOfWeek === 6 ? '600' : '400' }}>{day}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Progress Breakdown Row */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '20px' }} className="grid-responsive">
+        
+        {/* Fills by Machine */}
+        <div className="card card-pad">
+          <div className="section-label" style={{ marginBottom: '16px' }}>Today's Fills by Machine</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            {Object.values(MACHINES).map((m) => {
+              const machineFills = todayFills.filter(f => f.machine === m.id);
+              const count = machineFills.length;
+              const pct = Math.round((count / totalFillsForMachines) * 100);
+              const litresSum = machineFills.reduce((sum, f) => sum + (f.litres || 0), 0);
+              const revSum = machineFills.reduce((sum, f) => sum + (f.final || 0), 0);
+
+              return (
+                <div key={m.id}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '5px' }}>
+                    <span style={{ color: m.themeColor, fontWeight: '600' }}>{m.name}</span>
+                    <span className="mono" style={{ fontSize: '12px' }}>
+                      {count} fill{count !== 1 ? 's' : ''} · {litresSum.toFixed(1)}L · ₹{revSum.toLocaleString('en-IN')}
+                    </span>
+                  </div>
+                  <div style={{ height: '7px', background: 'var(--bg)', borderRadius: '4px', overflow: 'hidden' }}>
+                    <div 
+                      style={{ 
+                        height: '100%', 
+                        background: m.themeColor, 
+                        width: `${totalFillsCount > 0 ? pct : 0}%`,
+                        transition: 'width 0.4s ease-out'
+                      }} 
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Payments Breakdown */}
+        <div className="card card-pad">
+          <div className="section-label" style={{ marginBottom: '16px' }}>Payment Method Breakdown</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            {[
+              { label: 'Cash', color: '#1a6e3c', amount: cashAmt },
+              { label: 'GPay', color: '#0c5aa6', amount: gpayAmt },
+              { label: 'Credit', color: '#d97706', amount: creditAmt }
+            ].map((p) => {
+              const pct = Math.round((p.amount / totalPaymentAmt) * 100);
+              return (
+                <div key={p.label}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '5px' }}>
+                    <span style={{ color: p.color, fontWeight: '600' }}>{p.label}</span>
+                    <span className="mono" style={{ fontSize: '12px' }}>₹{p.amount.toLocaleString('en-IN')}</span>
+                  </div>
+                  <div style={{ height: '7px', background: 'var(--bg)', borderRadius: '4px', overflow: 'hidden' }}>
+                    <div 
+                      style={{ 
+                        height: '100%', 
+                        background: p.color, 
+                        width: `${totalRevenue > 0 ? pct : 0}%`,
+                        transition: 'width 0.4s ease-out'
+                      }} 
+                    />
+                  </div>
                 </div>
               );
             })}
@@ -423,15 +465,69 @@ export default function Dashboard({ customers, fills }) {
         </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0 0' }}>
-          <span style={{ fontSize: '12px', color: 'var(--text-3)' }}>
-            Showing {sortedTodayFills.length === 0 ? 0 : page * pageSize + 1}–{Math.min((page + 1) * pageSize, sortedTodayFills.length)} of {sortedTodayFills.length} entries
+          <span style={{ fontSize: '11px', color: 'var(--text-3)', fontWeight: '500' }}>
+            {sortedTodayFills.length === 0
+              ? 'No entries'
+              : `${page * pageSize + 1}–${Math.min((page + 1) * pageSize, sortedTodayFills.length)} of ${sortedTodayFills.length}`
+            }
           </span>
-          <div style={{ display: 'flex', gap: '6px' }}>
-            <button className="btn btn-sm btn-outline" disabled={page === 0} onClick={() => setPage(p => p - 1)}>Prev</button>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '2px',
+              padding: '2px',
+              borderRadius: '20px',
+              background: 'var(--bg)',
+              height: '26px',
+            }}
+          >
+            <div
+              onClick={page > 0 ? () => setPage(p => p - 1) : undefined}
+              style={{
+                padding: '3px 8px',
+                borderRadius: '20px',
+                cursor: page > 0 ? 'pointer' : 'default',
+                fontSize: '10px',
+                fontWeight: '600',
+                letterSpacing: '0.3px',
+                textTransform: 'uppercase',
+                color: page > 0 ? 'var(--text-2)' : 'var(--text-4)',
+                transition: 'color 0.2s',
+                userSelect: 'none',
+              }}
+            >Prev</div>
             {Array.from({ length: totalPages }, (_, i) => (
-              <button key={i} className="btn btn-sm btn-outline" style={i === page ? { background: 'var(--green)', color: '#fff', borderColor: 'var(--green)' } : {}} onClick={() => setPage(i)}>{i + 1}</button>
+              <div
+                key={i}
+                onClick={() => setPage(i)}
+                style={{
+                  padding: '3px 10px',
+                  borderRadius: '20px',
+                  cursor: 'pointer',
+                  fontSize: '10px',
+                  fontWeight: '700',
+                  color: i === page ? '#fff' : 'var(--text-3)',
+                  background: i === page ? 'var(--cb)' : 'transparent',
+                  transition: 'all 0.2s',
+                }}
+              >{i + 1}</div>
             ))}
-            <button className="btn btn-sm btn-outline" disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}>Next</button>
+            <div
+              onClick={page < totalPages - 1 ? () => setPage(p => p + 1) : undefined}
+              style={{
+                padding: '3px 8px',
+                borderRadius: '20px',
+                cursor: page < totalPages - 1 ? 'pointer' : 'default',
+                fontSize: '10px',
+                fontWeight: '600',
+                letterSpacing: '0.3px',
+                textTransform: 'uppercase',
+                color: page < totalPages - 1 ? 'var(--text-2)' : 'var(--text-4)',
+                transition: 'color 0.2s',
+                userSelect: 'none',
+              }}
+            >Next</div>
           </div>
         </div>
       </div>
