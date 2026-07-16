@@ -47,6 +47,7 @@ export default function FillHistory({ fills, triggerToast }) {
   const [selectedEmployee, setSelectedEmployee] = useState('all');
   const [selectedType, setSelectedType] = useState('all');
   const [selectedShift, setSelectedShift] = useState('all');
+  const [selectedBill, setSelectedBill] = useState('all');
   const [showCustom, setShowCustom] = useState(false);
   const [activePreset, setActivePreset] = useState('Today');
 
@@ -71,6 +72,7 @@ export default function FillHistory({ fills, triggerToast }) {
     if (selectedMachine !== 'all' && f.machine !== selectedMachine) return false;
     if (selectedEmployee !== 'all' && f.employee !== selectedEmployee) return false;
     if (selectedType !== 'all' && (f.entry_type || 'sale') !== selectedType) return false;
+    if (selectedBill !== 'all' && f.bill_type !== selectedBill) return false;
 
     return true;
   });
@@ -94,12 +96,13 @@ export default function FillHistory({ fills, triggerToast }) {
     setSelectedEmployee('all');
     setSelectedType('all');
     setSelectedShift('all');
+    setSelectedBill('all');
     setShowCustom(false);
     setActivePreset('Today');
   };
 
   const isDefaultRange = dateFrom === todayStr && dateTo === todayStr;
-  const hasFilters = !isDefaultRange || selectedMachine !== 'all' || selectedEmployee !== 'all' || selectedType !== 'all' || selectedShift !== 'all';
+  const hasFilters = !isDefaultRange || selectedMachine !== 'all' || selectedEmployee !== 'all' || selectedType !== 'all' || selectedShift !== 'all' || selectedBill !== 'all';
 
   const exportXLSX = () => {
     if (filteredFills.length === 0) return;
@@ -126,9 +129,10 @@ export default function FillHistory({ fills, triggerToast }) {
           new Date(f.ts).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }).replace(' ', '-'),
           f.litres,
           f.litres && f.actual ? Math.round(f.actual / f.litres) : '',
-          f.actual, f.final, ' ',
-          f.payment == 'Cash + GPay' ? 'C+GPAY' : f.payment,
+          f.actual, f.final, 
           f.payment == 'Cash + GPay' ? `${f.split_cash} + ${f.split_gpay}` : '',
+          f.payment == 'Cash + GPay' ? 'C+GPAY' : f.payment,
+          ' ',
           EMPLOYEE_INITIALS[f.employee?.toLowerCase()] || f.employee,
           isTest ? 'Test' : (f.bill_type ? ((f.bill_type || 'gst') === 'gst' ? 'GST bill' : 'non GST') : ''),
           f.discount, f.split_cash || '', f.split_gpay || '',
@@ -314,6 +318,15 @@ export default function FillHistory({ fills, triggerToast }) {
             </select>
           </div>
 
+          <div className="fg" style={{ minWidth: '100px' }}>
+            <label style={lbl}>Bill</label>
+            <select value={selectedBill} onChange={e => setSelectedBill(e.target.value)} style={inp}>
+              <option value="all">All</option>
+              <option value="gst">GST</option>
+              <option value="non-gst">Non-GST</option>
+            </select>
+          </div>
+
           <div style={divider} />
 
           {/* Count + clear */}
@@ -361,6 +374,12 @@ export default function FillHistory({ fills, triggerToast }) {
               <Chip
                 label={selectedShift === 'morning' ? '☀️ Morning shift' : '🌙 Night shift'}
                 onRemove={() => setSelectedShift('all')}
+              />
+            )}
+            {selectedBill !== 'all' && (
+              <Chip
+                label={`Bill: ${selectedBill === 'gst' ? 'GST' : 'Non-GST'}`}
+                onRemove={() => setSelectedBill('all')}
               />
             )}
           </div>
