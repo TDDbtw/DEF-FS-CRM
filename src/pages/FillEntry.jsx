@@ -23,6 +23,7 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
   const [splitCash, setSplitCash] = useState('');
   const [splitGpay, setSplitGpay] = useState('');
   const [notes, setNotes] = useState('');
+  const [lastNotes, setLastNotes] = useState('');
   const [billType, setBillType] = useState('');
 
   // Autocomplete state
@@ -181,12 +182,20 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
       if (last.payment) {
         setPayment(last.payment);
       }
+      if (last.notes) {
+        setLastNotes(last.notes);
+      } else {
+        setLastNotes('');
+      }
+    } else {
+      setLastNotes('');
     }
   };
 
   const clearAutofill = () => {
     setAutofilled(false);
     setAutofilledFields({});
+    setLastNotes('');
   };
 
   const handleActualChange = (val) => {
@@ -759,7 +768,13 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
           )}
 
           <div className="fg" style={{ marginTop: '14px' }}>
-            <label>Remarks / Notes <span className="opt">(opt)</span></label>
+            <label>Remarks / Notes <span className="opt">(opt)</span>
+              {lastNotes && (
+                <span style={{ marginLeft: '10px', fontSize: '11px', fontWeight: '400', color: 'var(--cb)', fontStyle: 'italic' }}>
+                  Last fill: “{lastNotes}”
+                </span>
+              )}
+            </label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
