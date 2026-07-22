@@ -56,14 +56,16 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
     if (!overrides) return null;
     const normalizedCompany = (company || '').trim().toLowerCase();
     const normalizedVehicle = (vehicle || '').trim().toUpperCase();
+    let machineMatch = null;
     for (const o of overrides) {
       if (o.field !== field) continue;
       if (o.machine && o.machine !== 'all' && o.machine !== selectedMachine) continue;
       const target = o.target_value.trim();
       if (o.target_type === 'company' && target.toLowerCase() === normalizedCompany) return o;
       if (o.target_type === 'vehicle' && target.toUpperCase() === normalizedVehicle) return o;
+      if (o.target_type === 'machine' && target === selectedMachine) machineMatch = o;
     }
-    return null;
+    return machineMatch;
   };
 
   const rateOverride = findOverride('rate');

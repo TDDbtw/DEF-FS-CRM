@@ -175,10 +175,10 @@ export default function Pricing({ overrides = [], customers = [], triggerToast, 
                   const vehicles = o.target_type === 'company' ? getCompanyVehicles(o.target_value) : [];
                   return (
                     <tr key={o.id}>
-                      <td><span className={`badge ${o.target_type === 'company' ? 'badge-ok' : 'badge-grey'}`}>{o.target_type}</span></td>
+                      <td><span className={`badge ${o.target_type === 'company' ? 'badge-ok' : o.target_type === 'machine' ? 'badge-hp' : 'badge-grey'}`}>{o.target_type}</span></td>
                       <td>
-                        <div style={{ fontWeight: 500 }}>{o.target_value}</div>
-                        {vehicles.length > 0 && (
+                        <div style={{ fontWeight: 500 }}>{o.target_type === 'machine' ? (MACHINES[o.target_value]?.name || o.target_value) : o.target_value}</div>
+                        {o.target_type === 'company' && vehicles.length > 0 && (
                           <div style={{ fontSize: '11px', color: 'var(--text-3)', marginTop: '3px' }}>
                             {vehicles.length} vehicle{vehicles.length > 1 ? 's' : ''}: {vehicles.join(', ')}
                           </div>
@@ -219,9 +219,25 @@ export default function Pricing({ overrides = [], customers = [], triggerToast, 
                 onClick={() => { setTargetType('company'); setAcOpen(false); }}>Company</button>
               <button type="button" className={`tab ${targetType === 'vehicle' ? 'active' : ''}`}
                 onClick={() => { setTargetType('vehicle'); setAcOpen(false); }}>Vehicle</button>
+              <button type="button" className={`tab ${targetType === 'machine' ? 'active' : ''}`}
+                onClick={() => { setTargetType('machine'); setAcOpen(false); }}>Machine</button>
             </div>
           </div>
 
+          {targetType === 'machine' ? (
+            <div>
+              <div style={{ marginBottom: '6px', fontSize: '12px', fontWeight: 500, color: 'var(--text-2)' }}>Machine</div>
+              <div className="tabs" style={{ marginBottom: 0 }}>
+                {Object.values(MACHINES).map(m => (
+                  <button key={m.id} type="button" className={`tab ${targetValue === m.id ? 'active' : ''}`}
+                    onClick={() => setTargetValue(m.id)}
+                    style={targetValue === m.id ? { background: m.themeColor, borderColor: m.themeColor, color: '#fff' } : {}}>
+                    {m.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
           <div ref={acRef} style={{ position: 'relative' }}>
             <div style={{ marginBottom: '6px', fontSize: '12px', fontWeight: 500, color: 'var(--text-2)' }}>
               {targetType === 'company' ? 'Company Name' : 'Vehicle Number'}
@@ -250,6 +266,7 @@ export default function Pricing({ overrides = [], customers = [], triggerToast, 
               </div>
             )}
           </div>
+          )}
 
           <div>
             <div style={{ marginBottom: '6px', fontSize: '12px', fontWeight: 500, color: 'var(--text-2)' }}>Field</div>
