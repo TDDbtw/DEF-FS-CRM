@@ -2,10 +2,10 @@ import { useState } from 'react';
 import { dbAPI } from '../config/supabase';
 import Modal from '../components/Modal';
 import { MACHINES } from '../config/machines';
-import { Search, Plus, MapPin, Phone, BookOpen, Calendar, HelpCircle } from 'lucide-react';
+import { Search, Plus, MapPin, Phone, BookOpen, Calendar, HelpCircle, Edit3 } from 'lucide-react';
 import { STATES, ACTIVE_DAYS, AT_RISK_DAYS } from '../config/constants';
 
-export default function Customers({ customers, fills, triggerToast, refreshData }) {
+export default function Customers({ customers, fills, triggerToast, refreshData, userRole }) {
   const [activeTab, setActiveTab] = useState('all'); // all, active, at-risk, churned
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -13,6 +13,10 @@ export default function Customers({ customers, fills, triggerToast, refreshData 
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedCust, setSelectedCust] = useState(null);
+
+  // Edit state
+  const [editing, setEditing] = useState(false);
+  const [editForm, setEditForm] = useState({});
 
   // New Customer Form State
   const [newName, setNewName] = useState('');
@@ -76,6 +80,8 @@ export default function Customers({ customers, fills, triggerToast, refreshData 
 
   const handleOpenDetail = (cust) => {
     setSelectedCust(cust);
+    setEditForm({ ...cust });
+    setEditing(false);
     setDetailModalOpen(true);
   };
 
@@ -109,6 +115,31 @@ export default function Customers({ customers, fills, triggerToast, refreshData 
       }
     } catch (e) {
       triggerToast('Failed to add customer. Check your connection.', 'warn');
+    }
+  };
+
+  const handleUpdateCustomer = async (e) => {
+    e.preventDefault();
+    if (!editForm.name) {
+      triggerToast('Name is required', 'warn');
+      return;
+    }
+    const payload = {
+      name: editForm.name.trim(),
+      phone: editForm.phone?.trim() || null,
+      company: editForm.company?.trim() || null,
+      co_phone: editForm.co_phone?.trim() || null,
+      state: editForm.state,
+      notes: editForm.notes?.trim() || null,
+    };
+    const { error } = await dbAPI.updateCustomer(selectedCust.id, payload);
+    if (error) {
+      triggerToast('Error updating customer: ' + error.message, 'warn');
+    } else {
+      triggerToast('Customer updated ✓');
+      setEditing(false);
+      setSelectedCust({ ...selectedCust, ...payload });
+      refreshData();
     }
   };
 
@@ -280,6 +311,13 @@ export default function Customers({ customers, fills, triggerToast, refreshData 
             onClose={() => setDetailModalOpen(false)}
             title={selectedCust.name}
           >
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
+              {userRole === 'office' && !editing && (
+                <button className="btn btn-sm btn-outline" onClick={() => setEditing(true)} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <Edit3 size={13} /> Edit
+                </button>
+              )}
+            </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '16px' }}>
               <div className="stat-card">
                 <div className="stat-label">Total Fills</div>
@@ -302,6 +340,46 @@ export default function Customers({ customers, fills, triggerToast, refreshData 
             </div>
 
             <div className="section-label">Details</div>
+            {editing ? (
+              <form onSubmit={handleUpdateCustomer} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+                <div className="form-row">
+                  <div className="fg">
+                    <label>Name</label>
+                    <input type="text" value={editForm.name || ''} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} required />
+                  </div>
+                  <div className="fg">
+                    <label>Phone</label>
+                    <input type="tel" value={editForm.phone || ''} onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))} maxLength={10} />
+                  </div>
+                </div>
+                <div className="form-row">
+                  <div className="fg">
+                    <label>Company</label>
+                    <input type="text" value={editForm.company || ''} onChange={e => setEditForm(f => ({ ...f, company: e.target.value }))} />
+                  </div>
+                  <div className="fg">
+                    <label>Company Phone</label>
+                    <input type="tel" value={editForm.co_phone || ''} onChange={e => setEditForm(f => ({ ...f, co_phone: e.target.value }))} maxLength={10} />
+                  </div>
+                </div>
+                <div className="form-row">
+                  <div className="fg">
+                    <label>State</label>
+                    <select value={editForm.state || 'Tamil Nadu'} onChange={e => setEditForm(f => ({ ...f, state: e.target.value }))}>
+                      {STATES.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+                  <div className="fg">
+                    <label>Notes</label>
+                    <input type="text" value={editForm.notes || ''} onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))} placeholder="Any notes about this customer" />
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                  <button type="submit" className="btn btn-primary">Save</button>
+                  <button type="button" className="btn btn-outline" onClick={() => setEditing(false)}>Cancel</button>
+                </div>
+              </form>
+            ) : (
             <div style={{ display: 'grid', gap: '6px', marginBottom: '16px', fontSize: '13px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: 'var(--text-2)', display: 'flex', alignItems: 'center', gap: '4px' }}><Calendar size={13} /> Vehicle</span>
@@ -330,6 +408,7 @@ export default function Customers({ customers, fills, triggerToast, refreshData 
                 </div>
               )}
             </div>
+            )}
 
             <div className="section-label">Recent Fills</div>
             {custFills.slice(0, 5).map(f => (

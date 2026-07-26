@@ -200,6 +200,7 @@ export default function App() {
             fills={fills}
             triggerToast={triggerToast}
             refreshData={loadData}
+            userRole={currentUser?.role}
           />
         );
       case 'history':

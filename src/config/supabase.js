@@ -132,4 +132,13 @@ export const dbAPI = {
       .select();
     return { data, error };
   },
+
+  updateCustomer: async (id, customer) => {
+    const { data, error } = await supabase
+      .from('customers')
+      .update(customer)
+      .eq('id', id)
+      .select();
+    return { data, error };
+  },
 };

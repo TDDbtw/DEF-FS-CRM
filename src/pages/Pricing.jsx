@@ -77,7 +77,7 @@ export default function Pricing({ overrides = [], customers = [], triggerToast, 
       target_value: targetValue.trim(),
       field,
       machine: machine === 'all' ? null : machine,
-      value: field === 'bill_type' ? value : Number(value),
+      value: field === 'bill_type' || field === 'payment' ? value : Number(value),
     };
     let error;
     if (editingId) {
@@ -104,7 +104,7 @@ export default function Pricing({ overrides = [], customers = [], triggerToast, 
     setTargetValue(o.target_value);
     setField(o.field);
     setMachine(o.machine || 'all');
-    setValue(o.field === 'bill_type' ? o.value : String(o.value));
+    setValue(o.field === 'bill_type' || o.field === 'payment' ? o.value : String(o.value));
     setEditingId(o.id);
     setModalOpen(true);
   };
@@ -148,6 +148,7 @@ export default function Pricing({ overrides = [], customers = [], triggerToast, 
         <button className={`tab ${filterTab === 'rate' ? 'active' : ''}`} onClick={() => setFilterTab('rate')}>Rate</button>
         <button className={`tab ${filterTab === 'discount' ? 'active' : ''}`} onClick={() => setFilterTab('discount')}>Discount</button>
         <button className={`tab ${filterTab === 'bill_type' ? 'active' : ''}`} onClick={() => setFilterTab('bill_type')}>Bill Type</button>
+        <button className={`tab ${filterTab === 'payment' ? 'active' : ''}`} onClick={() => setFilterTab('payment')}>Payment</button>
       </div>
 
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -166,7 +167,7 @@ export default function Pricing({ overrides = [], customers = [], triggerToast, 
                   <th>Target</th>
                   {filterTab === 'all' && <th>Field</th>}
                   <th>Machine</th>
-                  <th>{filterTab === 'bill_type' ? 'Bill' : 'Value'}</th>
+                  <th>{filterTab === 'bill_type' ? 'Bill' : filterTab === 'payment' ? 'Payment' : 'Value'}</th>
                   <th style={{ width: 40 }}></th>
                 </tr>
               </thead>
@@ -184,10 +185,10 @@ export default function Pricing({ overrides = [], customers = [], triggerToast, 
                           </div>
                         )}
                       </td>
-                      {filterTab === 'all' && <td><span className={`badge ${o.field === 'rate' ? 'badge-hp' : o.field === 'discount' ? 'badge-cb' : 'badge-ok'}`}>{o.field === 'bill_type' ? 'bill' : o.field}</span></td>}
+                      {filterTab === 'all' && <td><span className={`badge ${o.field === 'rate' ? 'badge-hp' : o.field === 'discount' ? 'badge-cb' : o.field === 'payment' ? 'badge-tt' : 'badge-ok'}`}>{o.field === 'bill_type' ? 'bill' : o.field}</span></td>}
                       <td>{o.machine ? <span className={`badge ${MACHINES[o.machine]?.badgeColor || 'badge-grey'}`}>{MACHINES[o.machine]?.name || o.machine}</span> : <span className="badge badge-grey">All</span>}</td>
                       <td style={{ fontWeight: 600, color: 'var(--green)' }}>
-                        {o.field === 'bill_type' ? (o.value === 'gst' ? 'GST' : 'Non-GST') : `₹${o.value}/L`}
+                        {o.field === 'bill_type' ? (o.value === 'gst' ? 'GST' : 'Non-GST') : o.field === 'payment' ? o.value : `₹${o.value}/L`}
                       </td>
                       <td>
                         <div style={{ display: 'flex', gap: '4px' }}>
@@ -277,6 +278,8 @@ export default function Pricing({ overrides = [], customers = [], triggerToast, 
                 onClick={() => { setField('discount'); setValue(''); }}>Discount (₹/L)</button>
               <button type="button" className={`tab ${field === 'bill_type' ? 'active' : ''}`}
                 onClick={() => { setField('bill_type'); setValue('gst'); }}>Bill Type</button>
+              <button type="button" className={`tab ${field === 'payment' ? 'active' : ''}`}
+                onClick={() => { setField('payment'); setValue('Credit'); }}>Payment</button>
             </div>
           </div>
 
@@ -298,7 +301,7 @@ export default function Pricing({ overrides = [], customers = [], triggerToast, 
 
           <div>
             <div style={{ marginBottom: '6px', fontSize: '12px', fontWeight: 500, color: 'var(--text-2)' }}>
-              {field === 'bill_type' ? 'Bill Type' : 'Override Value (₹/litre)'}
+              {field === 'bill_type' ? 'Bill Type' : field === 'payment' ? 'Payment Method' : 'Override Value (₹/litre)'}
             </div>
             {field === 'bill_type' ? (
               <div className="tabs" style={{ marginBottom: 0 }}>
@@ -306,6 +309,15 @@ export default function Pricing({ overrides = [], customers = [], triggerToast, 
                   onClick={() => setValue('gst')}>GST Bill</button>
                 <button type="button" className={`tab ${value === 'non-gst' ? 'active' : ''}`}
                   onClick={() => setValue('non-gst')}>Non-GST Bill</button>
+              </div>
+            ) : field === 'payment' ? (
+              <div className="tabs" style={{ marginBottom: 0 }}>
+                <button type="button" className={`tab ${value === 'Credit' ? 'active' : ''}`}
+                  onClick={() => setValue('Credit')}>Credit</button>
+                <button type="button" className={`tab ${value === 'Cash' ? 'active' : ''}`}
+                  onClick={() => setValue('Cash')}>Cash</button>
+                <button type="button" className={`tab ${value === 'GPay' ? 'active' : ''}`}
+                  onClick={() => setValue('GPay')}>GPay</button>
               </div>
             ) : (
               <input type="number" step="0.01" min="0" value={value} onChange={(e) => setValue(e.target.value)}
