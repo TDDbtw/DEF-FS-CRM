@@ -411,7 +411,12 @@ export default function Customers({ customers, fills, triggerToast, refreshData,
             )}
 
             <div className="section-label">Recent Fills</div>
-            {custFills.slice(0, 5).map(f => (
+            {custFills.slice(0, 5).map((f, i) => {
+              const prev = custFills[i + 1];
+              const kmSince = f.odo && prev && prev.odo && parseFloat(f.odo) > parseFloat(prev.odo)
+                ? parseFloat(f.odo) - parseFloat(prev.odo)
+                : null;
+              return (
               <div key={f.id} style={{ padding: '8px 0', borderBottom: '1px solid var(--border)', fontSize: '12px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <div>
@@ -423,6 +428,16 @@ export default function Customers({ customers, fills, triggerToast, refreshData,
                       {f.driver && <span> · {f.driver}</span>}
                       {f.company && <span> · {f.company}</span>}
                     </div>
+                    {f.odo && (
+                      <div style={{ color: 'var(--text-2)', marginTop: '3px', fontFamily: 'var(--mono)', fontSize: '11px' }}>
+                        <span>🛣 {parseFloat(f.odo).toLocaleString('en-IN')} km</span>
+                        {kmSince !== null && (
+                          <span style={{ color: 'var(--text-3)', marginLeft: '8px' }}>
+                            +{kmSince.toLocaleString('en-IN')} km since last
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <span className={f.machine === 'hp' ? 'pill-hp' : f.machine === 'cb' ? 'pill-cb' : 'pill-warn'}>
@@ -437,7 +452,8 @@ export default function Customers({ customers, fills, triggerToast, refreshData,
                   </div>
                 )}
               </div>
-            ))}
+              );
+            })}
             {custFills.length === 0 && (
               <div style={{ color: 'var(--text-3)', fontSize: '13px', textAlign: 'center', padding: '10px 0' }}>No fills recorded yet.</div>
             )}
