@@ -29,6 +29,7 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
   // Autocomplete state
   const [acOpen, setAcOpen] = useState(false);
   const [acMatches, setAcMatches] = useState([]);
+  const [acIndex, setAcIndex] = useState(0);
   const [autofilled, setAutofilled] = useState(false);
   const [autofilledFields, setAutofilledFields] = useState({}); // tracking which fields were autofilled
   const acRef = useRef(null);
@@ -139,6 +140,7 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
     if (v.length < 2) {
       setAcOpen(false);
       setAcMatches([]);
+      setAcIndex(0);
       clearAutofill();
       return;
     }
@@ -151,6 +153,23 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
 
     setAcMatches(matches);
     setAcOpen(matches.length > 0);
+    setAcIndex(0);
+  };
+
+  const handleAcKeyDown = (e) => {
+    if (!acOpen || acMatches.length === 0) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setAcIndex(i => (i + 1) % acMatches.length);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setAcIndex(i => (i - 1 + acMatches.length) % acMatches.length);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      handleAutofill(acMatches[acIndex]);
+    } else if (e.key === 'Escape') {
+      setAcOpen(false);
+    }
   };
 
   const handleAutofill = (cust) => {
@@ -393,6 +412,7 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
                 type="text"
                 value={vehicle}
                 onChange={(e) => handleVehInput(e.target.value)}
+                onKeyDown={handleAcKeyDown}
                 placeholder="Type vehicle no. — e.g. TN72AB1234"
                 style={{ textTransform: 'uppercase', fontFamily: 'var(--mono)', paddingLeft: '34px' }}
                 autoComplete="off"
@@ -402,13 +422,16 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
 
             {acOpen && (
               <div className="ac-dropdown open" style={{ width: '100%' }}>
-                {acMatches.map(c => {
+                {acMatches.map((c, idx) => {
                   const lastFill = fills.filter(f => (f.vehicle || '').toUpperCase() === (c.vehicle || '').toUpperCase()).sort((a,b) => new Date(b.ts) - new Date(a.ts))[0];
                   const daysSince = lastFill ? Math.floor((Date.now() - new Date(lastFill.ts).getTime()) / 86400000) : null;
                   const fillCount = fills.filter(f => (f.vehicle || '').toUpperCase() === (c.vehicle || '').toUpperCase()).length;
 
                   return (
-                    <div key={c.id} className="ac-item" onClick={() => handleAutofill(c)}>
+                    <div key={c.id} className="ac-item"
+                      onMouseEnter={() => setAcIndex(idx)}
+                      onClick={() => handleAutofill(c)}
+                      style={idx === acIndex ? { background: 'var(--bg)', borderLeft: '3px solid var(--green)' } : {}}>
                       <div className="ac-item-name">{c.name} {c.company ? `· ${c.company}` : ''}</div>
                       <div className="ac-item-meta">{c.vehicle} {c.phone ? `· ${c.phone}` : ''}</div>
                       <div className="ac-item-badges">

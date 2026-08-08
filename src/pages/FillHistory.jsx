@@ -465,6 +465,8 @@ export default function FillHistory({ fills, triggerToast, customers = [], refre
                           cursor: findCustomer(f.vehicle) ? 'pointer' : 'default',
                           color: findCustomer(f.vehicle) ? 'var(--cb)' : 'inherit',
                           fontWeight: '600',
+                          textDecoration: 'none',
+                          borderBottom: findCustomer(f.vehicle) ? '1px dashed var(--cb-mid)' : 'none',
                         }}
                         title={findCustomer(f.vehicle) ? 'View customer details' : undefined}
                       >

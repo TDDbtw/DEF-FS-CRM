@@ -214,7 +214,15 @@ export default function App() {
           />
         );
       case 'alerts':
-        return <Alerts customers={customers} fills={fills} />;
+        return (
+          <Alerts
+            customers={customers}
+            fills={fills}
+            triggerToast={triggerToast}
+            refreshData={loadData}
+            userRole={currentUser?.role}
+          />
+        );
       case 'dashboard':
         return <Dashboard customers={customers} fills={fills} />;
       case 'reports':

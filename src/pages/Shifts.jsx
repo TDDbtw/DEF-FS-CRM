@@ -102,11 +102,11 @@ export default function Shifts({ currentUser, triggerToast }) {
 
   return (
     <div style={{ maxWidth: '680px', margin: '0 auto' }}>
-      <div style={{ marginBottom: '20px' }}>
-        <h1 style={{ fontSize: '18px', fontWeight: '600' }}>Shift Log</h1>
-        <p style={{ fontSize: '13px', color: 'var(--text-3)', marginTop: '2px' }}>
-          Record totalizer readings at shift start and end
-        </p>
+      <div className="page-header">
+        <div>
+          <div className="page-title">Shift Log</div>
+          <div className="page-sub">Record totalizer readings at shift start and end</div>
+        </div>
       </div>
 
       {/* Log form */}

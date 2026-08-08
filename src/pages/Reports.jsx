@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { MACHINES } from '../config/machines';
-import { Filter, Download, TrendingUp, Fuel, Users, CreditCard, DollarSign, Sun, ArrowUp, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import { Filter, Download, Fuel, Users, CreditCard, DollarSign, Sun, ArrowUp, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import { getFillShift, getShiftDay, fmtDate, getTodayShiftDay } from '../config/shiftDay';
 
 const machineList = Object.values(MACHINES);
@@ -176,9 +176,12 @@ export default function Reports({ fills }) {
 
   return (
     <div style={{ maxWidth: '960px', margin: '0 auto', paddingBottom: '60px' }}>
-      <h1 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <TrendingUp size={20} /> Reports
-      </h1>
+      <div className="page-header">
+        <div>
+          <div className="page-title">Reports</div>
+          <div className="page-sub">Shift-wise sales, collections and performance</div>
+        </div>
+      </div>
 
       {/* ── Filters ── */}
       <div className="card card-pad" style={{ marginBottom: '16px', position: 'sticky', top: '0', zIndex: 10, borderBottom: '1px solid var(--border)' }}>
