@@ -204,7 +204,15 @@ export default function App() {
           />
         );
       case 'history':
-        return <FillHistory fills={fills} triggerToast={triggerToast} />;
+        return (
+          <FillHistory
+            fills={fills}
+            triggerToast={triggerToast}
+            customers={customers}
+            refreshData={loadData}
+            userRole={currentUser?.role}
+          />
+        );
       case 'alerts':
         return <Alerts customers={customers} fills={fills} />;
       case 'dashboard':

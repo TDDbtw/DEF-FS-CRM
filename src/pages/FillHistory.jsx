@@ -3,6 +3,7 @@ import { Download, Calendar, X, ChevronLeft, ChevronRight, Filter } from 'lucide
 import { MACHINES } from '../config/machines';
 import { EMPLOYEE_INITIALS } from '../config/constants';
 import { getFillShift, getShiftDay, fmtDate, getTodayShiftDay } from '../config/shiftDay';
+import CustomerDetailModal from '../components/CustomerDetailModal';
 import * as XLSX from 'xlsx';
 
 const todayStr = getTodayShiftDay();
@@ -40,7 +41,7 @@ function Chip({ label, onRemove }) {
   );
 }
 
-export default function FillHistory({ fills, triggerToast }) {
+export default function FillHistory({ fills, triggerToast, customers = [], refreshData, userRole }) {
   const [dateFrom, setDateFrom] = useState(todayStr);
   const [dateTo, setDateTo] = useState(todayStr);
   const [selectedMachine, setSelectedMachine] = useState('all');
@@ -50,6 +51,19 @@ export default function FillHistory({ fills, triggerToast }) {
   const [selectedBill, setSelectedBill] = useState('all');
   const [showCustom, setShowCustom] = useState(false);
   const [activePreset, setActivePreset] = useState('Today');
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+
+  const findCustomer = (vehicle) => {
+    return customers.find(c => (c.vehicle || '').toUpperCase() === (vehicle || '').toUpperCase());
+  };
+
+  const handleVehicleClick = (vehicle) => {
+    const cust = findCustomer(vehicle);
+    if (!cust) return;
+    setSelectedCustomer(cust);
+    setDetailOpen(true);
+  };
 
   const employees = [...new Set(fills.map(f => f.employee))].sort();
 
@@ -444,7 +458,19 @@ export default function FillHistory({ fills, triggerToast }) {
                       </span>
                     </td>
                     <td>{f.driver}</td>
-                    <td className="mono" style={{ fontSize: '11px', fontWeight: '600' }}>{f.vehicle}</td>
+                    <td className="mono" style={{ fontSize: '11px', fontWeight: '600' }}>
+                      <span
+                        onClick={() => handleVehicleClick(f.vehicle)}
+                        style={{
+                          cursor: findCustomer(f.vehicle) ? 'pointer' : 'default',
+                          color: findCustomer(f.vehicle) ? 'var(--cb)' : 'inherit',
+                          fontWeight: '600',
+                        }}
+                        title={findCustomer(f.vehicle) ? 'View customer details' : undefined}
+                      >
+                        {f.vehicle}
+                      </span>
+                    </td>
                     <td style={{ color: 'var(--text-2)' }}>{f.company || '—'}</td>
                     <td style={{ fontSize: '11px', fontFamily: 'var(--mono)', color: 'var(--text-2)' }}>{f.driver_ph || '—'}</td>
                     <td className="mono">{f.litres}L</td>
@@ -468,6 +494,16 @@ export default function FillHistory({ fills, triggerToast }) {
           )}
         </div>
       </div>
+
+      <CustomerDetailModal
+        customer={selectedCustomer}
+        isOpen={detailOpen}
+        onClose={() => setDetailOpen(false)}
+        fills={fills}
+        userRole={userRole}
+        triggerToast={triggerToast}
+        refreshData={refreshData}
+      />
     </div>
   );
 }
