@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { dbAPI } from '../config/supabase';
 import Modal from '../components/Modal';
 import CustomerDetailModal from '../components/CustomerDetailModal';
@@ -8,6 +8,8 @@ import { STATES, ACTIVE_DAYS, AT_RISK_DAYS } from '../config/constants';
 export default function Customers({ customers, fills, triggerToast, refreshData, userRole }) {
   const [activeTab, setActiveTab] = useState('all'); // all, active, at-risk, churned
   const [searchQuery, setSearchQuery] = useState('');
+  const [page, setPage] = useState(0);
+  const pageSize = 10;
   
   // Modals state
   const [addModalOpen, setAddModalOpen] = useState(false);
@@ -78,6 +80,12 @@ export default function Customers({ customers, fills, triggerToast, refreshData,
     setSelectedCust(cust);
     setDetailModalOpen(true);
   };
+
+  // Reset to first page when filters/tabs/search change
+  useEffect(() => { setPage(0); }, [activeTab, searchQuery]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredCustomers.length / pageSize));
+  const pagedCustomers = filteredCustomers.slice(page * pageSize, (page + 1) * pageSize);
 
   const handleSaveCustomer = async (e) => {
     e.preventDefault();
@@ -158,7 +166,7 @@ export default function Customers({ customers, fills, triggerToast, refreshData,
             No customers found matching this criteria.
           </div>
         ) : (
-          filteredCustomers.map(c => {
+          pagedCustomers.map(c => {
             const stats = getCustomerStatus(c);
             let statusColor = 'dot-ok';
             let statusText = 'New Customer';
@@ -208,6 +216,74 @@ export default function Customers({ customers, fills, triggerToast, refreshData,
           })
         )}
       </div>
+
+      {filteredCustomers.length > 0 && totalPages > 1 && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 4px 0' }}>
+          <span style={{ fontSize: '11px', color: 'var(--text-3)', fontWeight: '500' }}>
+            {filteredCustomers.length === 0
+              ? 'No entries'
+              : `${page * pageSize + 1}–${Math.min((page + 1) * pageSize, filteredCustomers.length)} of ${filteredCustomers.length}`}
+          </span>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '2px',
+              padding: '2px',
+              borderRadius: '20px',
+              background: 'var(--bg)',
+              height: '26px',
+            }}
+          >
+            <div
+              onClick={page > 0 ? () => setPage(p => p - 1) : undefined}
+              style={{
+                padding: '3px 8px',
+                borderRadius: '20px',
+                cursor: page > 0 ? 'pointer' : 'default',
+                fontSize: '10px',
+                fontWeight: '600',
+                letterSpacing: '0.3px',
+                textTransform: 'uppercase',
+                color: page > 0 ? 'var(--text-2)' : 'var(--text-4)',
+                transition: 'color 0.2s',
+                userSelect: 'none',
+              }}
+            >Prev</div>
+            {Array.from({ length: totalPages }, (_, i) => (
+              <div
+                key={i}
+                onClick={() => setPage(i)}
+                style={{
+                  padding: '3px 10px',
+                  borderRadius: '20px',
+                  cursor: 'pointer',
+                  fontSize: '10px',
+                  fontWeight: '700',
+                  color: i === page ? '#fff' : 'var(--text-3)',
+                  background: i === page ? 'var(--cb)' : 'transparent',
+                  transition: 'all 0.2s',
+                }}
+              >{i + 1}</div>
+            ))}
+            <div
+              onClick={page < totalPages - 1 ? () => setPage(p => p + 1) : undefined}
+              style={{
+                padding: '3px 8px',
+                borderRadius: '20px',
+                cursor: page < totalPages - 1 ? 'pointer' : 'default',
+                fontSize: '10px',
+                fontWeight: '600',
+                letterSpacing: '0.3px',
+                textTransform: 'uppercase',
+                color: page < totalPages - 1 ? 'var(--text-2)' : 'var(--text-4)',
+                transition: 'color 0.2s',
+                userSelect: 'none',
+              }}
+            >Next</div>
+          </div>
+        </div>
+      )}
 
       {/* Add Customer Modal */}
       <Modal
