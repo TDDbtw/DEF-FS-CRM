@@ -30,7 +30,8 @@ export const dbAPI = {
     const { data, error } = await supabase
       .from('customers')
       .select('*')
-      .order('name', { ascending: true });
+      .order('name', { ascending: true })
+      .limit(10000);
     return { data, error };
   },
 
@@ -46,7 +47,8 @@ export const dbAPI = {
     const { data, error } = await supabase
       .from('fills')
       .select('*')
-      .order('ts', { ascending: false });
+      .order('ts', { ascending: false })
+      .limit(10000);
     return { data, error };
   },
 
@@ -104,7 +106,8 @@ export const dbAPI = {
     const { data, error } = await supabase
       .from('pricing_overrides')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(10000);
     return { data, error };
   },
 
