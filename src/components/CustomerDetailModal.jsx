@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import Modal from './Modal';
+import FillDetailsModal from './FillDetailsModal';
 import { MACHINES } from '../config/machines';
 import { MapPin, Phone, BookOpen, Calendar, HelpCircle, Edit3 } from 'lucide-react';
 import { STATES, ACTIVE_DAYS, AT_RISK_DAYS } from '../config/constants';
@@ -8,6 +9,8 @@ import { dbAPI } from '../config/supabase';
 export default function CustomerDetailModal({ customer, isOpen, onClose, fills, userRole, triggerToast, refreshData }) {
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState({});
+  const [selectedFill, setSelectedFill] = useState(null);
+  const [fillDetailOpen, setFillDetailOpen] = useState(false);
 
   if (!customer) return null;
 
@@ -68,9 +71,10 @@ export default function CustomerDetailModal({ customer, isOpen, onClose, fills, 
     .sort((a, b) => new Date(b.ts) - new Date(a.ts));
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={() => { onClose(); setEditing(false); }}
+    <>
+      <Modal
+        isOpen={isOpen}
+        onClose={() => { onClose(); setEditing(false); }}
       title={customer.name}
     >
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
@@ -179,7 +183,11 @@ export default function CustomerDetailModal({ customer, isOpen, onClose, fills, 
           ? parseFloat(f.odo) - parseFloat(prev.odo)
           : null;
         return (
-        <div key={f.id} style={{ padding: '8px 0', borderBottom: '1px solid var(--border)', fontSize: '12px' }}>
+        <div key={f.id} style={{ padding: '8px 0', borderBottom: '1px solid var(--border)', fontSize: '12px', cursor: 'pointer', borderRadius: '6px', margin: '0 -6px', paddingLeft: '6px', paddingRight: '6px', transition: 'background 0.15s' }}
+          onClick={() => { setSelectedFill(f); setFillDetailOpen(true); }}
+          onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
+          onMouseLeave={e => e.currentTarget.style.background = ''}
+        >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
               <div style={{ fontWeight: '500' }}>
@@ -219,6 +227,14 @@ export default function CustomerDetailModal({ customer, isOpen, onClose, fills, 
       {custFills.length === 0 && (
         <div style={{ color: 'var(--text-3)', fontSize: '13px', textAlign: 'center', padding: '10px 0' }}>No fills recorded yet.</div>
       )}
-    </Modal>
+      </Modal>
+
+      <FillDetailsModal
+        fill={selectedFill}
+        customer={customer}
+        isOpen={fillDetailOpen}
+        onClose={() => setFillDetailOpen(false)}
+      />
+    </>
   );
 }

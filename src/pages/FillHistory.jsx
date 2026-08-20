@@ -4,6 +4,7 @@ import { MACHINES } from '../config/machines';
 import { EMPLOYEE_INITIALS } from '../config/constants';
 import { getFillShift, getShiftDay, fmtDate, getTodayShiftDay } from '../config/shiftDay';
 import CustomerDetailModal from '../components/CustomerDetailModal';
+import FillDetailsModal from '../components/FillDetailsModal';
 import * as XLSX from 'xlsx';
 
 const todayStr = getTodayShiftDay();
@@ -53,6 +54,8 @@ export default function FillHistory({ fills, triggerToast, customers = [], refre
   const [activePreset, setActivePreset] = useState('Today');
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [selectedFill, setSelectedFill] = useState(null);
+  const [fillDetailOpen, setFillDetailOpen] = useState(false);
   const [page, setPage] = useState(0);
   const pageSize = 25;
 
@@ -442,7 +445,13 @@ export default function FillHistory({ fills, triggerToast, customers = [], refre
               </thead>
               <tbody id="history-body">
                 {pagedFills.map((f) => (
-                  <tr key={f.id}>
+                  <tr
+                    key={f.id}
+                    onClick={() => { setSelectedFill(f); setFillDetailOpen(true); }}
+                    style={{ cursor: 'pointer', transition: 'background 0.15s' }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
+                    onMouseLeave={e => e.currentTarget.style.background = ''}
+                  >
                     <td style={{ fontSize: '11px', color: 'var(--text-2)', whiteSpace: 'nowrap' }}>
                       {new Date(f.ts).toLocaleString('en-IN', {
                         day: 'numeric', month: 'short',
@@ -470,7 +479,7 @@ export default function FillHistory({ fills, triggerToast, customers = [], refre
                     <td>{f.driver}</td>
                     <td className="mono" style={{ fontSize: '11px', fontWeight: '600' }}>
                       <span
-                        onClick={() => handleVehicleClick(f.vehicle)}
+                        onClick={(e) => { e.stopPropagation(); handleVehicleClick(f.vehicle); }}
                         style={{
                           cursor: findCustomer(f.vehicle) ? 'pointer' : 'default',
                           color: findCustomer(f.vehicle) ? 'var(--cb)' : 'inherit',
@@ -583,6 +592,13 @@ export default function FillHistory({ fills, triggerToast, customers = [], refre
         userRole={userRole}
         triggerToast={triggerToast}
         refreshData={refreshData}
+      />
+
+      <FillDetailsModal
+        fill={selectedFill}
+        customer={findCustomer(selectedFill?.vehicle)}
+        isOpen={fillDetailOpen}
+        onClose={() => setFillDetailOpen(false)}
       />
     </div>
   );
