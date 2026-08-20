@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Download, Calendar, X, ChevronLeft, ChevronRight, Filter } from 'lucide-react';
 import { MACHINES } from '../config/machines';
 import { EMPLOYEE_INITIALS } from '../config/constants';
@@ -53,6 +53,12 @@ export default function FillHistory({ fills, triggerToast, customers = [], refre
   const [activePreset, setActivePreset] = useState('Today');
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [page, setPage] = useState(0);
+  const pageSize = 25;
+
+  useEffect(() => {
+    setPage(0);
+  }, [dateFrom, dateTo, selectedMachine, selectedEmployee, selectedType, selectedShift, selectedBill]);
 
   const findCustomer = (vehicle) => {
     return customers.find(c => (c.vehicle || '').toUpperCase() === (vehicle || '').toUpperCase());
@@ -90,6 +96,10 @@ export default function FillHistory({ fills, triggerToast, customers = [], refre
 
     return true;
   });
+
+  const totalPages = Math.max(1, Math.ceil(filteredFills.length / pageSize));
+  const safePage = Math.min(page, totalPages - 1);
+  const pagedFills = filteredFills.slice(safePage * pageSize, (safePage + 1) * pageSize);
 
   const navigateDay = (dir) => {
     const f = new Date(dateFrom);
@@ -431,7 +441,7 @@ export default function FillHistory({ fills, triggerToast, customers = [], refre
                 </tr>
               </thead>
               <tbody id="history-body">
-                {filteredFills.map((f) => (
+                {pagedFills.map((f) => (
                   <tr key={f.id}>
                     <td style={{ fontSize: '11px', color: 'var(--text-2)', whiteSpace: 'nowrap' }}>
                       {new Date(f.ts).toLocaleString('en-IN', {
@@ -495,6 +505,74 @@ export default function FillHistory({ fills, triggerToast, customers = [], refre
             </table>
           )}
         </div>
+
+        {filteredFills.length > 0 && totalPages > 1 && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 4px 4px' }}>
+            <span style={{ fontSize: '11px', color: 'var(--text-3)', fontWeight: '500' }}>
+              {filteredFills.length === 0
+                ? 'No entries'
+                : `${safePage * pageSize + 1}–${Math.min((safePage + 1) * pageSize, filteredFills.length)} of ${filteredFills.length}`}
+            </span>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '2px',
+                padding: '2px',
+                borderRadius: '20px',
+                background: 'var(--bg)',
+                height: '26px',
+              }}
+            >
+              <div
+                onClick={safePage > 0 ? () => setPage(p => p - 1) : undefined}
+                style={{
+                  padding: '3px 8px',
+                  borderRadius: '20px',
+                  cursor: safePage > 0 ? 'pointer' : 'default',
+                  fontSize: '10px',
+                  fontWeight: '600',
+                  letterSpacing: '0.3px',
+                  textTransform: 'uppercase',
+                  color: safePage > 0 ? 'var(--text-2)' : 'var(--text-4)',
+                  transition: 'color 0.2s',
+                  userSelect: 'none',
+                }}
+              >Prev</div>
+              {Array.from({ length: totalPages }, (_, i) => (
+                <div
+                  key={i}
+                  onClick={() => setPage(i)}
+                  style={{
+                    padding: '3px 10px',
+                    borderRadius: '20px',
+                    cursor: 'pointer',
+                    fontSize: '10px',
+                    fontWeight: '700',
+                    color: i === safePage ? '#fff' : 'var(--text-3)',
+                    background: i === safePage ? 'var(--cb)' : 'transparent',
+                    transition: 'all 0.2s',
+                  }}
+                >{i + 1}</div>
+              ))}
+              <div
+                onClick={safePage < totalPages - 1 ? () => setPage(p => p + 1) : undefined}
+                style={{
+                  padding: '3px 8px',
+                  borderRadius: '20px',
+                  cursor: safePage < totalPages - 1 ? 'pointer' : 'default',
+                  fontSize: '10px',
+                  fontWeight: '600',
+                  letterSpacing: '0.3px',
+                  textTransform: 'uppercase',
+                  color: safePage < totalPages - 1 ? 'var(--text-2)' : 'var(--text-4)',
+                  transition: 'color 0.2s',
+                  userSelect: 'none',
+                }}
+              >Next</div>
+            </div>
+          </div>
+        )}
       </div>
 
       <CustomerDetailModal

@@ -44,12 +44,22 @@ export const dbAPI = {
   },
 
   fetchFills: async () => {
-    const { data, error } = await supabase
-      .from('fills')
-      .select('*')
-      .order('ts', { ascending: false })
-      .limit(10000);
-    return { data, error };
+    const all = [];
+    let from = 0;
+    const pageSize = 1000;
+    let done = false;
+    while (!done) {
+      const { data, error } = await supabase
+        .from('fills')
+        .select('*')
+        .order('ts', { ascending: false })
+        .range(from, from + pageSize - 1);
+      if (error) return { data: null, error };
+      all.push(...(data || []));
+      if (!data || data.length < pageSize) done = true;
+      else from += pageSize;
+    }
+    return { data: all, error: null };
   },
 
   addFill: async (fill) => {
