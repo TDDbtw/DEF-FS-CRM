@@ -11,7 +11,7 @@ export const MACHINES = {
   },
   cb: {
     id: 'cb',
-    name: 'C Blue',
+    name: 'CBlue',
     rate: Number(import.meta.env.VITE_RATE_CB || 55),
     color: 'cb',
     themeColor: 'var(--cb)',
