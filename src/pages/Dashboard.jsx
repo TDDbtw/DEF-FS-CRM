@@ -249,7 +249,7 @@ export default function Dashboard({ customers, fills }) {
               gap: '2px',
             }}
           >
-            {[{ id: 'all', label: 'All' }, { id: 'hp', label: 'HP' }, { id: 'cb', label: 'C Blue' }, { id: 'gulf', label: 'Gulf' }].map(m => {
+            {[{ id: 'all', label: 'All' }, { id: 'hp', label: 'HP' }, { id: 'cb', label: 'CBlue' }, { id: 'gulf', label: 'Gulf' }].map(m => {
               const isActive = chartMachine === m.id;
               const activeColor = m.id === 'hp' ? 'var(--hp)' : m.id === 'cb' ? 'var(--cb)' : m.id === 'gulf' ? 'var(--gulf)' : 'var(--text)';
               return (

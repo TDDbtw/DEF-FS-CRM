@@ -50,6 +50,11 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
   }, []);
 
   // ── Pricing Override Helpers ──
+  const lastFillForVehicle = autofilled && vehicle
+    ? fills.filter(f => (f.vehicle || '').toUpperCase() === vehicle.toUpperCase())
+        .sort((a, b) => new Date(b.ts) - new Date(a.ts))[0]
+    : null;
+
   const L = parseFloat(litres) || 0;
   const currentMachine = MACHINES[selectedMachine];
 
@@ -436,6 +441,7 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
                       <div className="ac-item-meta">{c.vehicle} {c.phone ? `· ${c.phone}` : ''}</div>
                       <div className="ac-item-badges">
                         {fillCount > 0 && <span className="badge badge-grey">{fillCount} fill{fillCount > 1 ? 's' : ''}</span>}
+                        {lastFill?.litres && <span className="badge badge-cb">{lastFill.litres}L last</span>}
                         {daysSince !== null && (
                           <span className={`badge ${daysSince <= 14 ? 'badge-ok' : daysSince <= 30 ? 'badge-warn' : 'badge-grey'}`}>
                             {daysSince === 0 ? 'today' : `${daysSince}d ago`}
@@ -451,8 +457,18 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
             <div className="hint">Start typing — known vehicles auto-fill details below</div>
           </div>
           {autofilled && (
-            <div style={{ marginTop: '10px' }} className="alert-strip alert-ok">
-              ✓ Known customer profile found — details auto-filled.
+            <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }} className="alert-strip alert-ok">
+              <span>✓ Known customer profile found — details auto-filled.</span>
+              {lastFillForVehicle?.litres && (
+                <span style={{ fontSize: '12px', fontWeight: '600', fontFamily: 'var(--mono)', color: 'var(--cb)' }}>
+                  Last fill: {lastFillForVehicle.litres}L
+                  {lastFillForVehicle.ts && (
+                    <span style={{ fontWeight: '400', fontFamily: 'inherit', color: 'var(--text-3)', marginLeft: '4px' }}>
+                      on {new Date(lastFillForVehicle.ts).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                    </span>
+                  )}
+                </span>
+              )}
             </div>
           )}
         </div>
