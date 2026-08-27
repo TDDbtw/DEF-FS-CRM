@@ -98,7 +98,7 @@ export default function AuthScreen({ onLoginSuccess }) {
               <div style={styles.inputWrapper}>
                 <input
                   type="text"
-                  placeholder={`Type your name — ${EMPLOYEE_NAMES.join(', ')}`}
+                  placeholder="Enter your name"
                   value={employeeName}
                   onChange={(e) => { setEmployeeName(e.target.value); setError(''); setPassword(''); }}
                   style={{ ...styles.input, paddingLeft: '12px', textTransform: 'capitalize' }}
