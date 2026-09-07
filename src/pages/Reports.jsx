@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { MACHINES } from '../config/machines';
 import { Filter, Download, Fuel, Users, CreditCard, DollarSign, Sun, ArrowUp, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import { getFillShift, getShiftDay, fmtDate, getTodayShiftDay } from '../config/shiftDay';
+import { SHIFT_START, SHIFT_NAME_A, SHIFT_NAME_B } from '../config/constants';
 
 const machineList = Object.values(MACHINES);
 
@@ -39,19 +40,19 @@ export default function Reports({ fills }) {
   };
 
   const filtered = useMemo(() => {
-    // Shift-aware boundaries: a "day" runs from 9 AM to next-day 9 AM.
-    // fromDate 9AM → toDate next-day 9AM captures complete night shifts that cross midnight.
-    const from = fromDate ? new Date(fromDate + 'T09:00:00') : null;
-    const toBase = toDate ? new Date(toDate + 'T09:00:00') : null;
-    if (toBase) toBase.setDate(toBase.getDate() + 1); // advance to next day's 9 AM
+    // Shift-aware boundaries: a "day" runs from SHIFT_START to next-day SHIFT_START.
+    // fromDate SHIFT_START → toDate next-day SHIFT_START captures complete extra shifts that cross midnight.
+    const from = fromDate ? new Date(fromDate + `T${String(SHIFT_START).padStart(2, '0')}:00:00`) : null;
+    const toBase = toDate ? new Date(toDate + `T${String(SHIFT_START).padStart(2, '0')}:00:00`) : null;
+    if (toBase) toBase.setDate(toBase.getDate() + 1); // advance to next day's SHIFT_START
     const to = toBase;
 
     return fills.filter(f => {
       const shiftType = getFillShift(f);
       // Compare using the shift day (the calendar date this fill "belongs to" per shift rules),
-      // not the raw timestamp — this ensures night-shift fills after midnight map to the right day.
+      // not the raw timestamp — this ensures extra-shift fills after midnight map to the right day.
       const sd = getShiftDay(f.ts);
-      const shiftDayDate = new Date(sd + 'T09:00:00'); // shift day starts at 9 AM
+      const shiftDayDate = new Date(sd + `T${String(SHIFT_START).padStart(2, '0')}:00:00`); // shift day starts at SHIFT_START
 
       if (from && shiftDayDate < from) return false;
       if (to   && shiftDayDate >= to)  return false;
@@ -110,7 +111,7 @@ export default function Reports({ fills }) {
     filtered.forEach(f => {
       const day = getShiftDay(f.ts);
       const shift = getFillShift(f);
-      if (!days[day]) days[day] = { morning: { count: 0, litres: 0, amount: 0, cash: 0, gpay: 0, credit: 0 }, night: { count: 0, litres: 0, amount: 0, cash: 0, gpay: 0, credit: 0 } };
+      if (!days[day]) days[day] = { [SHIFT_NAME_A]: { count: 0, litres: 0, amount: 0, cash: 0, gpay: 0, credit: 0 }, [SHIFT_NAME_B]: { count: 0, litres: 0, amount: 0, cash: 0, gpay: 0, credit: 0 } };
       const s = days[day][shift];
       s.count += 1; s.litres += f.litres || 0; s.amount += f.final || 0;
       const p = f.payment || '';
@@ -126,12 +127,12 @@ export default function Reports({ fills }) {
   const dailyTotals = useMemo(() => {
     return shiftDays.map(([day, s]) => ({
       day,
-      count: s.morning.count + s.night.count,
-      litres: s.morning.litres + s.night.litres,
-      amount: s.morning.amount + s.night.amount,
-      cash: s.morning.cash + s.night.cash,
-      gpay: s.morning.gpay + s.night.gpay,
-      credit: s.morning.credit + s.night.credit,
+      count: s[SHIFT_NAME_A].count + s[SHIFT_NAME_B].count,
+      litres: s[SHIFT_NAME_A].litres + s[SHIFT_NAME_B].litres,
+      amount: s[SHIFT_NAME_A].amount + s[SHIFT_NAME_B].amount,
+      cash: s[SHIFT_NAME_A].cash + s[SHIFT_NAME_B].cash,
+      gpay: s[SHIFT_NAME_A].gpay + s[SHIFT_NAME_B].gpay,
+      credit: s[SHIFT_NAME_A].credit + s[SHIFT_NAME_B].credit,
     }));
   }, [shiftDays]);
 
@@ -139,7 +140,7 @@ export default function Reports({ fills }) {
   const totalShiftPages = Math.ceil(shiftDays.length / perPage);
 
   const shiftTotals = useMemo(() => {
-    const t = { morning: { count: 0, litres: 0, amount: 0, cash: 0, gpay: 0, credit: 0 }, night: { count: 0, litres: 0, amount: 0, cash: 0, gpay: 0, credit: 0 } };
+    const t = { [SHIFT_NAME_A]: { count: 0, litres: 0, amount: 0, cash: 0, gpay: 0, credit: 0 }, [SHIFT_NAME_B]: { count: 0, litres: 0, amount: 0, cash: 0, gpay: 0, credit: 0 } };
     filtered.forEach(f => {
       const shift = getFillShift(f);
       const s = t[shift];
@@ -166,7 +167,7 @@ export default function Reports({ fills }) {
   const sortByMachine = (entries) => entries.sort((a, b) => machineOrder.indexOf(a[0]) - machineOrder.indexOf(b[0]));
 
   const fmtDay = (d) => {
-    const dt = new Date(d + 'T09:00:00');
+    const dt = new Date(d + `T${String(SHIFT_START).padStart(2, '0')}:00:00`);
     return dt.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
   };
 
@@ -232,8 +233,8 @@ export default function Reports({ fills }) {
             <label style={labelStyle}>Shift</label>
             <select value={selectedShift} onChange={e => { setSelectedShift(e.target.value); setShiftPage(0); }} style={inputStyle}>
               <option value="all">All shifts</option>
-              <option value="morning">Morning (9AM–9PM)</option>
-              <option value="night">Night (9PM–9AM)</option>
+              <option value={SHIFT_NAME_A}>{SHIFT_NAME_A.charAt(0).toUpperCase() + SHIFT_NAME_A.slice(1)}</option>
+              <option value={SHIFT_NAME_B}>{SHIFT_NAME_B.charAt(0).toUpperCase() + SHIFT_NAME_B.slice(1)}</option>
             </select>
           </div>
           <div style={{ fontSize: '12px', color: 'var(--text-3)', lineHeight: '36px' }}>
@@ -292,7 +293,7 @@ export default function Reports({ fills }) {
                     </tr>
                   ))
                 ) : (
-                  [['morning', 'Morning (9AM–9PM)'], ['night', 'Night (9PM–9AM)']].map(([key, label]) => {
+                  [[SHIFT_NAME_A, SHIFT_NAME_A.charAt(0).toUpperCase() + SHIFT_NAME_A.slice(1)], [SHIFT_NAME_B, SHIFT_NAME_B.charAt(0).toUpperCase() + SHIFT_NAME_B.slice(1)]].map(([key, label]) => {
                     const s = shiftTotals[key];
                     if (s.count === 0) return null;
                     return (
@@ -310,12 +311,12 @@ export default function Reports({ fills }) {
                 )}
                 <tr style={{ background: 'var(--bg)' }}>
                   <td style={{ ...tdStyle, fontWeight: '600' }}>Total</td>
-                  <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600' }}>{shiftTotals.morning.count + shiftTotals.night.count}</td>
-                  <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600', fontFamily: 'var(--mono)' }}>{fmt(shiftTotals.morning.litres + shiftTotals.night.litres)}</td>
-                  <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600', fontFamily: 'var(--mono)' }}>{formatINR(shiftTotals.morning.amount + shiftTotals.night.amount)}</td>
-                  <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600', fontFamily: 'var(--mono)' }}>{formatINR(shiftTotals.morning.cash + shiftTotals.night.cash)}</td>
-                  <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600', fontFamily: 'var(--mono)' }}>{formatINR(shiftTotals.morning.gpay + shiftTotals.night.gpay)}</td>
-                  <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600', fontFamily: 'var(--mono)' }}>{formatINR(shiftTotals.morning.credit + shiftTotals.night.credit)}</td>
+                  <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600' }}>{shiftTotals[SHIFT_NAME_A].count + shiftTotals[SHIFT_NAME_B].count}</td>
+                  <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600', fontFamily: 'var(--mono)' }}>{fmt(shiftTotals[SHIFT_NAME_A].litres + shiftTotals[SHIFT_NAME_B].litres)}</td>
+                  <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600', fontFamily: 'var(--mono)' }}>{formatINR(shiftTotals[SHIFT_NAME_A].amount + shiftTotals[SHIFT_NAME_B].amount)}</td>
+                  <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600', fontFamily: 'var(--mono)' }}>{formatINR(shiftTotals[SHIFT_NAME_A].cash + shiftTotals[SHIFT_NAME_B].cash)}</td>
+                  <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600', fontFamily: 'var(--mono)' }}>{formatINR(shiftTotals[SHIFT_NAME_A].gpay + shiftTotals[SHIFT_NAME_B].gpay)}</td>
+                  <td style={{ ...tdStyle, textAlign: 'right', fontWeight: '600', fontFamily: 'var(--mono)' }}>{formatINR(shiftTotals[SHIFT_NAME_A].credit + shiftTotals[SHIFT_NAME_B].credit)}</td>
                 </tr>
               </tbody>
             </table>
@@ -342,13 +343,15 @@ export default function Reports({ fills }) {
               </thead>
               <tbody>
                 {paginatedShiftDays.map(([day, data]) => {
-                  const shifts = [['morning', 'Morning', data.morning], ['night', 'Night', data.night]].filter(([,,s]) => s.count > 0);
+                  const capA = SHIFT_NAME_A.charAt(0).toUpperCase() + SHIFT_NAME_A.slice(1);
+                  const capB = SHIFT_NAME_B.charAt(0).toUpperCase() + SHIFT_NAME_B.slice(1);
+                  const shifts = [[SHIFT_NAME_A, capA, data[SHIFT_NAME_A]], [SHIFT_NAME_B, capB, data[SHIFT_NAME_B]]].filter(([,,s]) => s.count > 0);
                   const dayTotal = {
-                    count: data.morning.count + data.night.count,
-                    litres: data.morning.litres + data.night.litres,
-                    amount: data.morning.amount + data.night.amount,
-                    cash: data.morning.cash + data.night.cash,
-                    gpay: data.morning.gpay + data.night.gpay,
+                    count: data[SHIFT_NAME_A].count + data[SHIFT_NAME_B].count,
+                    litres: data[SHIFT_NAME_A].litres + data[SHIFT_NAME_B].litres,
+                    amount: data[SHIFT_NAME_A].amount + data[SHIFT_NAME_B].amount,
+                    cash: data[SHIFT_NAME_A].cash + data[SHIFT_NAME_B].cash,
+                    gpay: data[SHIFT_NAME_A].gpay + data[SHIFT_NAME_B].gpay,
                   };
                   return shifts.map(([key, label, s], idx) => (
                     <tr key={day + key}>
@@ -357,7 +360,7 @@ export default function Reports({ fills }) {
                           {fmtDay(day)}
                         </td>
                       )}
-                      <td style={{ ...tdStyle, color: key === 'night' ? 'var(--text-2)' : 'inherit' }}>{label}</td>
+                      <td style={{ ...tdStyle, color: key === SHIFT_NAME_B ? 'var(--text-2)' : 'inherit' }}>{label}</td>
                       <td style={{ ...tdStyle, textAlign: 'right' }}>{s.count}</td>
                       <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'var(--mono)' }}>{fmt(s.litres)}</td>
                       <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'var(--mono)' }}>{formatINR(s.amount)}</td>
@@ -534,7 +537,7 @@ export default function Reports({ fills }) {
               rows.push([
                 new Date(f.ts).toLocaleDateString('en-IN'),
                 fmtDay(getShiftDay(f.ts)),
-                getFillShift(f) === 'morning' ? 'Morning' : 'Night',
+                getFillShift(f) === SHIFT_NAME_A ? SHIFT_NAME_A.charAt(0).toUpperCase() + SHIFT_NAME_A.slice(1) : SHIFT_NAME_B.charAt(0).toUpperCase() + SHIFT_NAME_B.slice(1),
                 f.employee, f.bill_type ? ((f.bill_type || 'gst') === 'gst' ? 'GST bill' : 'non GST') : '', f.machine, f.vehicle, fmt(f.litres), f.actual, f.discount||0, f.final, f.payment, f.split_cash||0, f.split_gpay||0
               ]);
             });

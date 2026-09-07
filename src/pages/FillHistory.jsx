@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Download, Calendar, X, ChevronLeft, ChevronRight, Filter } from 'lucide-react';
 import { MACHINES } from '../config/machines';
-import { EMPLOYEE_INITIALS } from '../config/constants';
+import { EMPLOYEE_INITIALS, SHIFT_START, SHIFT_NAME_A, SHIFT_NAME_B } from '../config/constants';
 import { getFillShift, getShiftDay, fmtDate, getTodayShiftDay } from '../config/shiftDay';
 import CustomerDetailModal from '../components/CustomerDetailModal';
 import FillDetailsModal from '../components/FillDetailsModal';
@@ -10,7 +10,7 @@ import * as XLSX from 'xlsx';
 const todayStr = getTodayShiftDay();
 
 const fmtDay = (d) => {
-  const dt = new Date(d + 'T09:00:00');
+  const dt = new Date(d + `T${String(SHIFT_START).padStart(2, '0')}:00:00`);
   return dt.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 };
 
@@ -79,15 +79,15 @@ export default function FillHistory({ fills, triggerToast, customers = [], refre
   const sortedFills = [...fills].sort((a, b) => new Date(b.ts) - new Date(a.ts));
 
   const filteredFills = sortedFills.filter(f => {
-    // Shift-aware boundaries: a "day" runs from 9 AM to next-day 9 AM.
-    const from = dateFrom ? new Date(dateFrom + 'T09:00:00') : null;
-    const toBase = dateTo ? new Date(dateTo + 'T09:00:00') : null;
+    // Shift-aware boundaries: a "day" runs from SHIFT_START to next-day SHIFT_START.
+    const from = dateFrom ? new Date(dateFrom + `T${String(SHIFT_START).padStart(2, '0')}:00:00`) : null;
+    const toBase = dateTo ? new Date(dateTo + `T${String(SHIFT_START).padStart(2, '0')}:00:00`) : null;
     if (toBase) toBase.setDate(toBase.getDate() + 1);
     const to = toBase;
 
     const shiftType = getFillShift(f);
     const sd = getShiftDay(f.ts);
-    const shiftDayDate = new Date(sd + 'T09:00:00'); // shift day starts at 9 AM
+    const shiftDayDate = new Date(sd + `T${String(SHIFT_START).padStart(2, '0')}:00:00`); // shift day starts at SHIFT_START
 
     if (from && shiftDayDate < from) return false;
     if (to && shiftDayDate >= to) return false;
@@ -340,8 +340,8 @@ export default function FillHistory({ fills, triggerToast, customers = [], refre
             <label style={lbl}>Shift</label>
             <select value={selectedShift} onChange={e => setSelectedShift(e.target.value)} style={inp}>
               <option value="all">All shifts</option>
-              <option value="morning">☀️ Morning (9AM–9PM)</option>
-              <option value="night">🌙 Night (9PM–9AM)</option>
+              <option value={SHIFT_NAME_A}>☀️ {SHIFT_NAME_A.charAt(0).toUpperCase() + SHIFT_NAME_A.slice(1)}</option>
+              <option value={SHIFT_NAME_B}>🌙 {SHIFT_NAME_B.charAt(0).toUpperCase() + SHIFT_NAME_B.slice(1)}</option>
             </select>
           </div>
 
@@ -399,7 +399,7 @@ export default function FillHistory({ fills, triggerToast, customers = [], refre
             )}
             {selectedShift !== 'all' && (
               <Chip
-                label={selectedShift === 'morning' ? '☀️ Morning shift' : '🌙 Night shift'}
+                label={selectedShift === SHIFT_NAME_A ? `☀️ ${SHIFT_NAME_A.charAt(0).toUpperCase() + SHIFT_NAME_A.slice(1)} shift` : `🌙 ${SHIFT_NAME_B.charAt(0).toUpperCase() + SHIFT_NAME_B.slice(1)} shift`}
                 onRemove={() => setSelectedShift('all')}
               />
             )}

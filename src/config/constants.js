@@ -1,7 +1,11 @@
 // Shift boundary hours
-export const SHIFT_START = Number(import.meta.env.VITE_SHIFT_START) || 9;
-export const SHIFT_END = Number(import.meta.env.VITE_SHIFT_END) || 21;
+export const SHIFT_START = Number(import.meta.env.VITE_SHIFT_START) || 8;
+export const SHIFT_END = Number(import.meta.env.VITE_SHIFT_END) || 19;
 export const SHIFT_GRACE = 30; // minutes — shifts the boundary for time-based fallback classification
+
+// Shift names (stored in DB, used for filters and display)
+export const SHIFT_NAME_A = import.meta.env.VITE_SHIFT_NAME_A || 'general';
+export const SHIFT_NAME_B = import.meta.env.VITE_SHIFT_NAME_B || 'extra';
 
 // GST
 export const GST_RATE = Number(import.meta.env.VITE_GST_RATE) || 18;

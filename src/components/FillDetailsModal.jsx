@@ -1,6 +1,6 @@
 import Modal from './Modal';
 import { MACHINES } from '../config/machines';
-import { EMPLOYEE_INITIALS } from '../config/constants';
+import { EMPLOYEE_INITIALS, SHIFT_NAME_A, SHIFT_NAME_B } from '../config/constants';
 import { getFillShift } from '../config/shiftDay';
 import {
   Calendar, Clock, Fuel, IndianRupee, Truck, User,
@@ -94,8 +94,8 @@ export default function FillDetailsModal({ fill, customer, isOpen, onClose }) {
                 <Clock size={12} /> {timeStr}
               </span>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(255,255,255,.7)', border: '1px solid var(--border)', borderRadius: '12px', padding: '2px 8px', fontSize: '11px', fontWeight: '600', color: 'var(--text-2)' }}>
-                {shiftType === 'morning' ? <Sun size={11} /> : <Moon size={11} />}
-                {shiftType === 'morning' ? 'Morning' : 'Night'}
+                {shiftType === SHIFT_NAME_A ? <Sun size={11} /> : <Moon size={11} />}
+                {shiftType === SHIFT_NAME_A ? SHIFT_NAME_A.charAt(0).toUpperCase() + SHIFT_NAME_A.slice(1) : SHIFT_NAME_B.charAt(0).toUpperCase() + SHIFT_NAME_B.slice(1)}
               </span>
             </div>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', marginTop: '10px', flexWrap: 'wrap' }}>

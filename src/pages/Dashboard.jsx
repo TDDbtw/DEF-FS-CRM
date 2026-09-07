@@ -1,11 +1,11 @@
 import { useState, useMemo, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { MACHINES } from '../config/machines';
-import { ACTIVE_DAYS } from '../config/constants';
+import { ACTIVE_DAYS, SHIFT_NAME_A, SHIFT_NAME_B } from '../config/constants';
 import { getShiftDay, getTodayShiftDay, getFillShift } from '../config/shiftDay';
 
 export default function Dashboard({ customers, fills }) {
-  // Business day boundary (9 AM cutoff), not plain calendar midnight.
+  // Business day boundary (SHIFT_START cutoff), not plain calendar midnight.
   const todayShiftDay = getTodayShiftDay();
 
   // Helper: customer status count
@@ -286,7 +286,7 @@ export default function Dashboard({ customers, fills }) {
                 gap: '2px',
               }}
             >
-              {[{ id: 'all', label: 'Both' }, { id: 'morning', label: 'Day' }, { id: 'night', label: 'Night' }].map(m => (
+              {[{ id: 'all', label: 'Both' }, { id: SHIFT_NAME_A, label: SHIFT_NAME_A.charAt(0).toUpperCase() + SHIFT_NAME_A.slice(1) }, { id: SHIFT_NAME_B, label: SHIFT_NAME_B.charAt(0).toUpperCase() + SHIFT_NAME_B.slice(1) }].map(m => (
                 <div
                   key={m.id}
                   onClick={() => setChartShift(m.id)}
