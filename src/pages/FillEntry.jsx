@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { MACHINES } from '../config/machines';
 import { dbAPI } from '../config/supabase';
 import { Search, RotateCcw } from 'lucide-react';
-import { GST_MULTIPLIER, GST_HALF, GST_RATE, STATES, SHIFT_START, SHIFT_END, SHIFT_GRACE, SHIFT_NAME_A, SHIFT_NAME_B } from '../config/constants';
+import { GST_MULTIPLIER, GST_HALF, GST_RATE, STATES, SHIFT_NAME_A, SHIFT_NAME_B } from '../config/constants';
+import { getShiftType } from '../config/shiftDay';
 
 export default function FillEntry({ currentUser, triggerToast, refreshData, customers, fills, overrides }) {
   const [selectedMachine, setSelectedMachine] = useState('hp');
@@ -288,26 +289,7 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
       return;
     }
 
-    const { data: logs, error: logsErr } = await dbAPI.fetchShiftLogs();
-    if (logsErr) {
-      triggerToast('Could not determine shift from logs. Defaulting to time-based.', 'warn');
-    }
-    const allStarts = (logs || [])
-      .filter(l => l.type === 'start')
-      .sort((a, b) => new Date(b.created_at) - new Date(b.created_at));
-    const latestStart = allStarts[0];
-
-    let shiftType;
-    if (latestStart) {
-      const h = new Date(latestStart.created_at).getHours();
-      shiftType = h >= SHIFT_START && h < SHIFT_END ? SHIFT_NAME_A : SHIFT_NAME_B;
-    } else {
-      const d = new Date();
-      const totalMin = d.getHours() * 60 + d.getMinutes();
-      const startMin = SHIFT_START * 60;
-      const endMin = SHIFT_END * 60;
-      shiftType = totalMin >= startMin + SHIFT_GRACE && totalMin < endMin + SHIFT_GRACE ? SHIFT_NAME_A : SHIFT_NAME_B;
-    }
+    const shiftType = getShiftType(new Date());
 
     const payload = {
       employee: currentUser?.name || 'Unknown',
