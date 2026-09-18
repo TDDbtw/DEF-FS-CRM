@@ -13,6 +13,7 @@ import Dashboard from './pages/Dashboard';
 import Reports from './pages/Reports';
 import Shifts from './pages/Shifts';
 import Pricing from './pages/Pricing';
+import Marketing from './pages/Marketing';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -231,6 +232,8 @@ export default function App() {
         return <Shifts currentUser={currentUser} triggerToast={triggerToast} />;
       case 'pricing':
         return <Pricing overrides={overrides} customers={customers} triggerToast={triggerToast} refreshData={loadData} />;
+      case 'marketing':
+        return <Marketing currentUser={currentUser} triggerToast={triggerToast} />;
       default:
         return currentUser?.role === 'office' 
           ? <Dashboard customers={customers} fills={fills} />

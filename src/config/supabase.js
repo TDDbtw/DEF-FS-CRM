@@ -154,4 +154,39 @@ export const dbAPI = {
       .select();
     return { data, error };
   },
+
+  fetchLeads: async () => {
+    const { data, error } = await supabase
+      .from('marketing_leads')
+      .select('*')
+      .order('date', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(10000);
+    return { data, error };
+  },
+
+  addLead: async (lead) => {
+    const { data, error } = await supabase
+      .from('marketing_leads')
+      .insert([lead])
+      .select();
+    return { data, error };
+  },
+
+  updateLead: async (id, lead) => {
+    const { data, error } = await supabase
+      .from('marketing_leads')
+      .update(lead)
+      .eq('id', id)
+      .select();
+    return { data, error };
+  },
+
+  deleteLead: async (id) => {
+    const { data, error } = await supabase
+      .from('marketing_leads')
+      .delete()
+      .eq('id', id);
+    return { data, error };
+  },
 };

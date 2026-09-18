@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Fuel, Users, ClipboardList, Bell, BarChart3, FileText, Clock, LogOut, Menu, X, Tag } from 'lucide-react';
+import { Fuel, Users, ClipboardList, Bell, BarChart3, FileText, Clock, LogOut, Menu, X, Tag, Megaphone } from 'lucide-react';
 import { BUSINESS_NAME, BUSINESS_LOCATION } from '../config/constants';
 
 
@@ -21,6 +21,7 @@ export default function Layout({
         { id: 'reports', label: 'Reports', icon: FileText },
         { id: 'shifts', label: 'Shifts', icon: Clock },
         { id: 'customers', label: 'Customers', icon: Users },
+        { id: 'marketing', label: 'Marketing', icon: Megaphone },
         { id: 'history', label: 'Fill History', icon: ClipboardList },
         { id: 'pricing', label: 'Pricing', icon: Tag },
         { 
@@ -35,6 +36,7 @@ export default function Layout({
         { id: 'fill', label: 'New Fill Entry', icon: Fuel },
         { id: 'shifts', label: 'Shifts', icon: Clock },
         { id: 'customers', label: 'Customers', icon: Users },
+        { id: 'marketing', label: 'Marketing', icon: Megaphone },
         { id: 'history', label: 'Fill History', icon: ClipboardList },
         { id: 'pricing', label: 'Pricing', icon: Tag },
         { 
