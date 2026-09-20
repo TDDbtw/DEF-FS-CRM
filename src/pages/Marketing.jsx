@@ -502,7 +502,7 @@ const exportXLSX = async () => {
           <h1 className="page-title"><Megaphone size={18} /> Marketing</h1>
           <p className="page-sub">{leads.length} total leads &middot; {statusCounts['New'] || 0} new</p>
         </div>
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
           <label style={{ fontSize: '11px', color: 'var(--text-2)', display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
             <input
               type="checkbox"
