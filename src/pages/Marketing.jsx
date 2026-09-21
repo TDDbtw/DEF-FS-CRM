@@ -298,87 +298,99 @@ const exportXLSX = async () => {
       'GREEN LAND AND OCEAN BLUE ENERGY, OFFICIAL  DISTRIBUTOR FOR HP DEF,ROHAN ADBLUE, GULF ADBLUE';
 
     const wb = new ExcelJS.Workbook();
-    const ws = wb.addWorksheet('Marketing Leads');
 
-    ws.columns = [
-      { width: 4 },  // SN
-      { width: 22 }, // CUSTOMER
-      { width: 12 }, // PERSONS MET
-      { width: 16 }, // DESIGNATION
-      { width: 14 }, // MOBILE NO
-      { width: 18 }, // FIELD
-      { width: 30 }, // VALUE
-      { width: 40 }, // NOTES
-    ];
+    const grouped = {};
+    exportFiltered.forEach(l => {
+      const d = l.date || 'Unknown';
+      if (!grouped[d]) grouped[d] = [];
+      grouped[d].push(l);
+    });
 
-    // Row 1: company banner, bold + merged across the full width
-    const bannerRow = ws.addRow([COMPANY_HEADER]);
-    ws.mergeCells(1, 1, 1, 8);
-    bannerRow.getCell(1).font = { bold: true, size: 12 };
-    bannerRow.getCell(1).alignment = { vertical: 'middle', horizontal: 'left' };
+    const sortedDates = Object.keys(grouped).sort();
 
-    // Row 2: header row, bold with shaded fill
-    const headerRow = ws.addRow([
-      'SN', 'CUSTOMER', 'PERSONS MET', 'DESIGNATION', 'MOBILE NO', 'FIELD', 'VALUE', 'NOTES',
-    ]);
-    headerRow.eachCell((cell) => {
-      cell.font = { bold: true };
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9D9D9' } };
-      cell.border = {
+    sortedDates.forEach(dateStr => {
+      const leads = grouped[dateStr];
+      const label = new Date(dateStr).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+      const sheetName = label.replace(/\s/g, ' ');
+      const ws = wb.addWorksheet(sheetName);
+
+      ws.columns = [
+        { width: 4 },  // SN
+        { width: 22 }, // CUSTOMER
+        { width: 12 }, // PERSONS MET
+        { width: 16 }, // DESIGNATION
+        { width: 14 }, // MOBILE NO
+        { width: 18 }, // FIELD
+        { width: 30 }, // VALUE
+        { width: 40 }, // NOTES
+      ];
+
+      const bannerRow = ws.addRow([COMPANY_HEADER]);
+      ws.mergeCells(1, 1, 1, 8);
+      bannerRow.getCell(1).font = { bold: true, size: 12 };
+      bannerRow.getCell(1).alignment = { vertical: 'middle', horizontal: 'left' };
+
+      const dateBanner = ws.addRow([`Date: ${label}  |  Leads: ${leads.length}`]);
+      ws.mergeCells(2, 1, 2, 8);
+      dateBanner.getCell(1).font = { bold: true, size: 11, color: { argb: 'FF2563EB' } };
+
+      const headerRow = ws.addRow([
+        'SN', 'CUSTOMER', 'PERSONS MET', 'DESIGNATION', 'MOBILE NO', 'FIELD', 'VALUE', 'NOTES',
+      ]);
+      headerRow.eachCell((cell) => {
+        cell.font = { bold: true };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9D9D9' } };
+        cell.border = {
+          top: { style: 'thin' }, left: { style: 'thin' },
+          bottom: { style: 'thin' }, right: { style: 'thin' },
+        };
+      });
+
+      const thinBorder = {
         top: { style: 'thin' }, left: { style: 'thin' },
         bottom: { style: 'thin' }, right: { style: 'thin' },
       };
-    });
+      const addBorderedRow = (values) => {
+        const row = ws.addRow(values);
+        row.eachCell({ includeEmpty: true }, (cell) => {
+          cell.border = thinBorder;
+        });
+        return row;
+      };
 
-    const thinBorder = {
-      top: { style: 'thin' }, left: { style: 'thin' },
-      bottom: { style: 'thin' }, right: { style: 'thin' },
-    };
-    const addBorderedRow = (values) => {
-      const row = ws.addRow(values);
-      row.eachCell({ includeEmpty: true }, (cell) => {
-        cell.border = thinBorder;
+      leads.forEach((l, idx) => {
+        addBorderedRow([
+          idx + 1,
+          l.customer || '',
+          l.persons_met || '',
+          l.designation || '',
+          l.mobile || '',
+          'DATE',
+          l.date || '',
+          l.details || '',
+        ]);
+
+        const subRows = [
+          ['PRODUCT', l.product || ''],
+          ['REPLY', l.reply || ''],
+          ['PMNT TERMS', l.payment_terms || ''],
+          ['PRESENT SUPPLIER', l.present_supplier || ''],
+          ['PRESENT RATE', l.present_rate || ''],
+          ['KEY PERSON', l.key_person || ''],
+          ['IBC REQD.', l.ibc_required ? 'Yes' : 'No'],
+          ['STATUS', l.status || ''],
+          ['CREATED BY', l.created_by || ''],
+        ];
+        subRows.forEach(([label, value]) => {
+          const row = addBorderedRow(['', '', '', '', '', label, value, '']);
+          row.getCell(6).font = { bold: true };
+        });
+
+        const otherRow = addBorderedRow(['', 'OTHER INFO', l.other_info || '', '', '', '', '', '']);
+        otherRow.getCell(2).font = { bold: true };
+
+        ws.addRow([]);
       });
-      return row;
-    };
-
-    exportFiltered.forEach((l, idx) => {
-      // Main row: identity columns + first label/value pair
-      addBorderedRow([
-        idx + 1,
-        l.customer || '',
-        l.persons_met || '',
-        l.designation || '',
-        l.mobile || '',
-        'DATE',
-        l.date || '',
-        l.details || '',
-      ]);
-
-      // Remaining label/value rows — same shape as the PMNT TERMS / PRESENT SUPPLIER /
-      // PRESENT RATE / KEY PERSON rows in your source files
-      const subRows = [
-        ['PRODUCT', l.product || ''],
-        ['REPLY', l.reply || ''],
-        ['PMNT TERMS', l.payment_terms || ''],
-        ['PRESENT SUPPLIER', l.present_supplier || ''],
-        ['PRESENT RATE', l.present_rate || ''],
-        ['KEY PERSON', l.key_person || ''],
-        ['IBC REQD.', l.ibc_required ? 'Yes' : 'No'],
-        ['STATUS', l.status || ''],
-        ['CREATED BY', l.created_by || ''],
-      ];
-      subRows.forEach(([label, value]) => {
-        const row = addBorderedRow(['', '', '', '', '', label, value, '']);
-        row.getCell(6).font = { bold: true };
-      });
-
-      // OTHER INFO row
-      const otherRow = addBorderedRow(['', 'OTHER INFO', l.other_info || '', '', '', '', '', '']);
-      otherRow.getCell(2).font = { bold: true };
-
-      // spacer row between records
-      ws.addRow([]);
     });
 
     const buffer = await wb.xlsx.writeBuffer();
