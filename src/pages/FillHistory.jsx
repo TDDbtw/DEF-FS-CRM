@@ -52,6 +52,7 @@ export default function FillHistory({ fills, triggerToast, customers = [], refre
   const [selectedBill, setSelectedBill] = useState('all');
   const [showCustom, setShowCustom] = useState(false);
   const [activePreset, setActivePreset] = useState('Today');
+  const [includeTimeColumn, setIncludeTimeColumn] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [selectedFill, setSelectedFill] = useState(null);
@@ -137,7 +138,7 @@ export default function FillHistory({ fills, triggerToast, customers = [], refre
     try {
       const headers = [
         'Type', 'Driver', 'Truck No', 'Machine', 'Customer', 'Mob', 'Odometer',
-        'Date', 'Litres', 'RATE', 'Amount', 'Final Collect', '       ',
+        'Date', 'Time', 'Litres', 'RATE', 'Amount', 'Final Collect', '       ',
         'Payment', '       ', 'Employee', 'Bill', 'Discount', 'Split Cash',
         'Split GPay', 'Shift', 'State', 'Company Phone', 'Totalizer Readings', 'Remarks'
       ];
@@ -147,13 +148,17 @@ export default function FillHistory({ fills, triggerToast, customers = [], refre
           .map(([k, v]) => `${k.toUpperCase()}:${v}`)
           .join(' | ');
         const isTest = f.entry_type === 'test';
-        return [
+        const dt = new Date(f.ts);
+        const dateStr = dt.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }).replace(' ', '-');
+        const timeStr = dt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+        const row = [
           f.entry_type || 'sale',
           isTest ? 'Test' : f.driver,
           f.vehicle,
           MACHINES[f.machine]?.name || f.machine.toUpperCase(),
           f.company || '', f.driver_ph || '', f.odo || '',
-          new Date(f.ts).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }).replace(' ', '-'),
+          dateStr,
+          includeTimeColumn ? timeStr : '',
           f.litres,
           f.litres && f.actual ? Math.round(f.actual / f.litres) : '',
           f.actual, f.final, 
@@ -165,7 +170,13 @@ export default function FillHistory({ fills, triggerToast, customers = [], refre
           f.discount, f.split_cash || '', f.split_gpay || '',
           f.shift, f.state, f.co_ph || '', tots, f.notes || ''
         ];
+        if (!includeTimeColumn) {
+          row.splice(8, 1); // remove Time column
+        }
+        return row;
       });
+
+      const finalHeaders = includeTimeColumn ? headers : headers.slice(0, 8).concat(headers.slice(9));
 
       const wsData = [headers, ...rows];
       const ws = XLSX.utils.aoa_to_sheet(wsData);
@@ -221,7 +232,16 @@ export default function FillHistory({ fills, triggerToast, customers = [], refre
           <div className="page-title">Fill History</div>
           <div className="page-sub">Chronological list of all fuel entries</div>
         </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <label style={{ fontSize: '11px', color: 'var(--text-2)', display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
+            <input
+              type="checkbox"
+              checked={includeTimeColumn}
+              onChange={e => setIncludeTimeColumn(e.target.checked)}
+              style={{ width: 'auto' }}
+            />
+            Include Time
+          </label>
           <button
             className="btn btn-outline"
             onClick={exportXLSX}
