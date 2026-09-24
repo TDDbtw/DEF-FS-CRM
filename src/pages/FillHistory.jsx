@@ -178,11 +178,11 @@ export default function FillHistory({ fills, triggerToast, customers = [], refre
 
       const finalHeaders = includeTimeColumn ? headers : headers.slice(0, 8).concat(headers.slice(9));
 
-      const wsData = [headers, ...rows];
+      const wsData = [finalHeaders, ...rows];
       const ws = XLSX.utils.aoa_to_sheet(wsData);
 
       // Auto width: measure max content length per column
-      const colWidths = headers.map((h, colIdx) => {
+      const colWidths = finalHeaders.map((h, colIdx) => {
         const lengths = wsData.map(row => String(row[colIdx] ?? '').length);
         const max = Math.max(...lengths, h.length);
         return { wch: Math.min(max + 2, 40) }; // +2 padding, cap at 40 chars
