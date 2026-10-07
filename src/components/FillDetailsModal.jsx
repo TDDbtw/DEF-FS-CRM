@@ -168,7 +168,7 @@ export default function FillDetailsModal({ fill, customer, isOpen, onClose }) {
           <CardTitle icon={Truck}>Vehicle &amp; Customer</CardTitle>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 20px' }}>
             <Fact icon={Truck} color="var(--cb)" bg="var(--cb-soft)" label="Truck No" value={fill.vehicle} mon />
-            <Fact icon={User} color="var(--text-2)" bg="var(--bg)" label="Customer" value={customer?.name || fill.company || '—'} />
+            <Fact icon={User} color="var(--text-2)" bg="var(--bg)" label="Company" value={fill.company || customer?.name || '—'} />
             <Fact icon={User} color="var(--text-2)" bg="var(--bg)" label="Driver" value={isTest ? 'Test' : fill.driver || '—'} />
             <Fact icon={Phone} color="var(--text-2)" bg="var(--bg)" label="Driver Mobile" value={fill.driver_ph || '—'} mon />
             <Fact icon={Phone} color="var(--text-2)" bg="var(--bg)" label="Company Phone" value={fill.co_ph || '—'} mon />
