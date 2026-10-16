@@ -90,6 +90,25 @@ export default function Shifts({ currentUser, triggerToast }) {
     }
   }, [loading, currentUserHasActive]);
 
+  // Pre-fill totalizer readings from the most recent shift-end when starting a new shift
+  useEffect(() => {
+    if (loading) return;
+    if (type === 'start') {
+      const lastEnd = [...logs]
+        .filter(l => l.type === 'end')
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+      if (lastEnd) {
+        setTotals({
+          hp: lastEnd.tot_hp ?? '',
+          cb: lastEnd.tot_cb ?? '',
+          gulf: lastEnd.tot_gulf ?? '',
+        });
+      }
+    } else {
+      setTotals({ hp: '', cb: '', gulf: '' });
+    }
+  }, [loading, logs, type]);
+
   const fmt = (iso) => {
     const d = new Date(iso);
     return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
