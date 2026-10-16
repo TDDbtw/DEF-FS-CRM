@@ -84,7 +84,7 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
     if (billTypeOverride) {
       setBillType(billTypeOverride.value === 'gst' ? 'gst' : 'non-gst');
     }
-  }, [billTypeOverride]);
+  }, [billTypeOverride, vehicle, company, selectedMachine]);
 
   // Reset manual-edit flag when rate override activates (forces discount to 0)
   useEffect(() => {
@@ -208,6 +208,9 @@ export default function FillEntry({ currentUser, triggerToast, refreshData, cust
       }
       if (last.payment) {
         setPayment(last.payment);
+      }
+      if (last.bill_type) {
+        setBillType(last.bill_type);
       }
       if (last.notes) {
         setLastNotes(last.notes);
