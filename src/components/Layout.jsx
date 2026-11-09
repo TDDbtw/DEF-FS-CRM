@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Fuel, Users, ClipboardList, Bell, BarChart3, FileText, Clock, LogOut, Menu, X, Tag, Megaphone } from 'lucide-react';
+import { Fuel, Users, ClipboardList, Bell, BarChart3, FileText, Clock, LogOut, Menu, X, Tag, Megaphone, Package } from 'lucide-react';
 import { BUSINESS_NAME, BUSINESS_LOCATION } from '../config/constants';
 
 
@@ -19,6 +19,7 @@ export default function Layout({
   const menuItems = isOffice
     ? [
         { id: 'reports', label: 'Reports', icon: FileText },
+        { id: 'buckets', label: 'DEF Buckets', icon: Package },
         { id: 'shifts', label: 'Shifts', icon: Clock },
         { id: 'customers', label: 'Customers', icon: Users },
         { id: 'marketing', label: 'Marketing', icon: Megaphone },
@@ -34,6 +35,7 @@ export default function Layout({
       ]
     : [
         { id: 'fill', label: 'New Fill Entry', icon: Fuel },
+        { id: 'buckets', label: 'DEF Buckets', icon: Package },
         { id: 'shifts', label: 'Shifts', icon: Clock },
         { id: 'customers', label: 'Customers', icon: Users },
         { id: 'marketing', label: 'Marketing', icon: Megaphone },

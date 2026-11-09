@@ -14,6 +14,7 @@ import Reports from './pages/Reports';
 import Shifts from './pages/Shifts';
 import Pricing from './pages/Pricing';
 import Marketing from './pages/Marketing';
+import BucketSales from './pages/BucketSales';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -234,6 +235,14 @@ export default function App() {
         return <Pricing overrides={overrides} customers={customers} triggerToast={triggerToast} refreshData={loadData} />;
       case 'marketing':
         return <Marketing currentUser={currentUser} triggerToast={triggerToast} />;
+      case 'buckets':
+        return (
+          <BucketSales
+            currentUser={currentUser}
+            customers={customers}
+            triggerToast={triggerToast}
+          />
+        );
       default:
         return currentUser?.role === 'office' 
           ? <Dashboard customers={customers} fills={fills} />

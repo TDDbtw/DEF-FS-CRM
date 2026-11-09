@@ -189,4 +189,29 @@ export const dbAPI = {
       .eq('id', id);
     return { data, error };
   },
+
+  fetchBucketSales: async () => {
+    const { data, error } = await supabase
+      .from('bucket_sales')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(2000);
+    return { data, error };
+  },
+
+  addBucketSale: async (sale) => {
+    const { data, error } = await supabase
+      .from('bucket_sales')
+      .insert([sale])
+      .select();
+    return { data, error };
+  },
+
+  deleteBucketSale: async (id) => {
+    const { data, error } = await supabase
+      .from('bucket_sales')
+      .delete()
+      .eq('id', id);
+    return { data, error };
+  },
 };
