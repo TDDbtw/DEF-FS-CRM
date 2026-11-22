@@ -70,6 +70,7 @@ export default function BucketSales({ currentUser, customers = [], triggerToast 
   const [showCustom, setShowCustom] = useState(false);
   const [activePreset, setActivePreset] = useState('Today');
   const [includeTimeColumn, setIncludeTimeColumn] = useState(false);
+  const [section, setSection] = useState('list');
 
   const applySales = useCallback((data, error) => {
     if (error) {
@@ -353,7 +354,7 @@ export default function BucketSales({ currentUser, customers = [], triggerToast 
             {loading ? '' : ` · today ${todayQty} bucket${todayQty === 1 ? '' : 's'}, ${inr(todayAmount)}`}
           </div>
         </div>
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+        {section === 'history' && <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           <label style={{ fontSize: '11px', color: 'var(--text-2)', display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
             <input
               type="checkbox"
@@ -381,7 +382,12 @@ export default function BucketSales({ currentUser, customers = [], triggerToast 
             <Download size={15} />
             Export CSV
           </button>
-        </div>
+        </div>}
+      </div>
+
+      <div className="tabs" style={{ marginBottom: '12px' }}>
+        <button type="button" className={`tab ${section === 'list' ? 'active' : ''}`} onClick={() => setSection('list')}>Bucket list</button>
+        <button type="button" className={`tab ${section === 'history' ? 'active' : ''}`} onClick={() => setSection('history')}>Sale history</button>
       </div>
 
       {loadError && (
@@ -394,7 +400,7 @@ export default function BucketSales({ currentUser, customers = [], triggerToast 
         </div>
       )}
 
-      <div className="grid-responsive" style={{ display: 'grid', gridTemplateColumns: '1.25fr 0.9fr', gap: '14px', alignItems: 'start' }}>
+      {section === 'list' && <div className="grid-responsive" style={{ display: 'grid', gridTemplateColumns: '1.25fr 0.9fr', gap: '14px', alignItems: 'start' }}>
         <div className="card" style={{ overflow: 'hidden' }}>
           <div className="card-pad" style={{ paddingBottom: '8px' }}>
             <div className="section-label">Price list</div>
@@ -560,9 +566,10 @@ export default function BucketSales({ currentUser, customers = [], triggerToast 
             </button>
           </div>
         </form>
-      </div>
+      </div>}
 
-      <div className="card" style={{ marginTop: '14px', marginBottom: '12px', padding: '14px 16px' }}>
+      {section === 'history' && <>
+      <div className="card" style={{ marginBottom: '12px', padding: '14px 16px' }}>
         <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center', marginBottom: '10px' }}>
           {presets.map((p) => (
             <button
@@ -725,6 +732,7 @@ export default function BucketSales({ currentUser, customers = [], triggerToast 
           )}
         </div>
       </div>
+      </>}
     </div>
   );
 }
