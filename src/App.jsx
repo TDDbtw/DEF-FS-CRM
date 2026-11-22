@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { dbAPI } from './config/supabase';
+import { getShiftDay, getTodayShiftDay } from './config/shiftDay';
 import Layout from './components/Layout';
 import AuthScreen from './components/AuthScreen';
 import Toast from './components/Toast';
@@ -50,6 +51,9 @@ export default function App() {
   };
 
   const [activePage, setActivePage] = useState(null);
+  const [bucketTimes, setBucketTimes] = useState([]);
+  const [bucketsSeenAt, setBucketsSeenAt] = useState(0);
+  const [seenForKey, setSeenForKey] = useState('');
 
   // Global toast system state
   const [toastMsg, setToastMsg] = useState('');
@@ -117,6 +121,45 @@ export default function App() {
       loadData();
     }
   }, [currentUser]);
+
+  const bucketsSeenKey = currentUser?.email ? `gloe_buckets_seen_at_${currentUser.email.toLowerCase()}` : '';
+  if (bucketsSeenKey !== seenForKey) {
+    setSeenForKey(bucketsSeenKey);
+    setBucketsSeenAt(bucketsSeenKey ? Number(localStorage.getItem(bucketsSeenKey) || 0) : 0);
+  }
+
+  useEffect(() => {
+    if (!currentUser) return;
+    let cancelled = false;
+    const loadTimes = () => {
+      dbAPI.fetchBucketSaleTimes().then(({ data, error }) => {
+        if (!cancelled && !error) setBucketTimes(data || []);
+      });
+    };
+    loadTimes();
+    window.addEventListener('focus', loadTimes);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('focus', loadTimes);
+    };
+  }, [currentUser, activePage]);
+
+  const markBucketsSeen = () => {
+    // A few seconds of slack covers a sale saved as the page closes, if the database clock is slightly ahead.
+    const now = Date.now() + 5000;
+    if (bucketsSeenKey) localStorage.setItem(bucketsSeenKey, String(now));
+    setBucketsSeenAt(now);
+  };
+
+  const openPage = (pageId) => {
+    if (pageId === 'buckets' || activePage === 'buckets') markBucketsSeen();
+    setActivePage(pageId);
+  };
+
+  const todayShift = getTodayShiftDay();
+  const bucketBadge = activePage === 'buckets' ? 0 : bucketTimes.filter((sale) => (
+    getShiftDay(sale.created_at) === todayShift && new Date(sale.created_at).getTime() > bucketsSeenAt
+  )).length;
 
   const triggerToast = (msg, type = 'ok') => {
     setToastMsg(msg);
@@ -254,11 +297,12 @@ export default function App() {
     <>
       <Layout 
         activePage={activePage} 
-        setActivePage={setActivePage} 
+        setActivePage={openPage} 
         currentUser={currentUser}
         userRole={currentUser?.role}
         onLogout={handleLogout}
         alertCount={getAlertsCount()}
+        bucketCount={bucketBadge}
       >
         {renderPage()}
       </Layout>

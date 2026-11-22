@@ -199,6 +199,15 @@ export const dbAPI = {
     return { data, error };
   },
 
+  fetchBucketSaleTimes: async () => {
+    const { data, error } = await supabase
+      .from('bucket_sales')
+      .select('created_at')
+      .order('created_at', { ascending: false })
+      .limit(500);
+    return { data, error };
+  },
+
   addBucketSale: async (sale) => {
     const { data, error } = await supabase
       .from('bucket_sales')
