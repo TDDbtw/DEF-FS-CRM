@@ -1,11 +1,45 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Package, Search, Download } from 'lucide-react';
+import { Package, Search, Download, Calendar, X, ChevronLeft, ChevronRight, Filter } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { dbAPI } from '../config/supabase';
 import { BUCKETS, inr } from '../config/buckets';
-import { getShiftDay, getTodayShiftDay } from '../config/shiftDay';
+import { SHIFT_START } from '../config/constants';
+import { getShiftDay, getTodayShiftDay, fmtDate } from '../config/shiftDay';
 
 const todayShift = getTodayShiftDay();
+
+const fmtDay = (d) => {
+  const dt = new Date(d + `T${String(SHIFT_START).padStart(2, '0')}:00:00`);
+  return dt.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+};
+
+const presets = [
+  { label: 'Today', range: () => ({ from: todayShift, to: todayShift }) },
+  { label: 'Yesterday', range: () => { const d = new Date(); d.setDate(d.getDate() - 1); const s = fmtDate(d); return { from: s, to: s }; } },
+  { label: 'This Week', range: () => { const d = new Date(); d.setDate(d.getDate() - d.getDay()); return { from: fmtDate(d), to: todayShift }; } },
+  { label: 'This Month', range: () => { const d = new Date(); d.setDate(1); return { from: fmtDate(d), to: todayShift }; } },
+  { label: 'Last Month', range: () => { const d = new Date(); d.setMonth(d.getMonth() - 1); d.setDate(1); const e = new Date(); e.setDate(0); return { from: fmtDate(d), to: fmtDate(e) }; } },
+];
+
+function Chip({ label, onRemove }) {
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: '5px',
+      background: 'var(--bg)', border: '1px solid var(--border-mid)',
+      borderRadius: '20px', padding: '3px 10px',
+      fontSize: '11px', fontWeight: '500', color: 'var(--text-2)',
+    }}>
+      {label}
+      <button onClick={onRemove} style={{
+        display: 'flex', alignItems: 'center', background: 'none',
+        border: 'none', cursor: 'pointer', padding: '0',
+        color: 'var(--text-3)', lineHeight: 1,
+      }}>
+        <X size={11} />
+      </button>
+    </span>
+  );
+}
 
 export default function BucketSales({ currentUser, customers = [], triggerToast }) {
   const [sales, setSales] = useState([]);
@@ -27,6 +61,15 @@ export default function BucketSales({ currentUser, customers = [], triggerToast 
   const [acMatches, setAcMatches] = useState([]);
   const [acIndex, setAcIndex] = useState(0);
   const acRef = useRef(null);
+
+  const [dateFrom, setDateFrom] = useState(todayShift);
+  const [dateTo, setDateTo] = useState(todayShift);
+  const [selectedItem, setSelectedItem] = useState('all');
+  const [selectedEmployee, setSelectedEmployee] = useState('all');
+  const [selectedPayment, setSelectedPayment] = useState('all');
+  const [showCustom, setShowCustom] = useState(false);
+  const [activePreset, setActivePreset] = useState('Today');
+  const [includeTimeColumn, setIncludeTimeColumn] = useState(false);
 
   const applySales = useCallback((data, error) => {
     if (error) {
@@ -77,6 +120,55 @@ export default function BucketSales({ currentUser, customers = [], triggerToast 
   const todaySales = sales.filter((sale) => getShiftDay(sale.created_at) === todayShift);
   const todayQty = todaySales.reduce((sum, sale) => sum + (Number(sale.qty) || 0), 0);
   const todayAmount = todaySales.reduce((sum, sale) => sum + (Number(sale.total) || 0), 0);
+
+  const employees = [...new Set(sales.map((sale) => sale.employee).filter(Boolean))].sort();
+  const payments = [...new Set(['Cash', 'GPay', 'Credit', ...sales.map((sale) => sale.payment).filter(Boolean)])];
+
+  const filteredSales = [...sales]
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+    .filter((sale) => {
+      const from = dateFrom ? new Date(dateFrom + `T${String(SHIFT_START).padStart(2, '0')}:00:00`) : null;
+      const toBase = dateTo ? new Date(dateTo + `T${String(SHIFT_START).padStart(2, '0')}:00:00`) : null;
+      if (toBase) toBase.setDate(toBase.getDate() + 1);
+      const shiftDayDate = new Date(getShiftDay(sale.created_at) + `T${String(SHIFT_START).padStart(2, '0')}:00:00`);
+      if (from && shiftDayDate < from) return false;
+      if (toBase && shiftDayDate >= toBase) return false;
+      if (selectedItem !== 'all' && sale.product_id !== selectedItem) return false;
+      if (selectedEmployee !== 'all' && sale.employee !== selectedEmployee) return false;
+      if (selectedPayment !== 'all' && sale.payment !== selectedPayment) return false;
+      return true;
+    });
+
+  const isDefaultRange = dateFrom === todayShift && dateTo === todayShift;
+  const hasFilters = !isDefaultRange || selectedItem !== 'all' || selectedEmployee !== 'all' || selectedPayment !== 'all';
+
+  const navigateDay = (dir) => {
+    const f = new Date(dateFrom);
+    const t = new Date(dateTo);
+    f.setDate(f.getDate() + dir);
+    t.setDate(t.getDate() + dir);
+    if (t > new Date()) return;
+    setDateFrom(fmtDate(f));
+    setDateTo(fmtDate(t));
+    setActivePreset('');
+  };
+
+  const handlePreset = (fn, label) => {
+    const { from, to } = fn();
+    setDateFrom(from);
+    setDateTo(to);
+    setActivePreset(label);
+  };
+
+  const clearFilters = () => {
+    setDateFrom(todayShift);
+    setDateTo(todayShift);
+    setSelectedItem('all');
+    setSelectedEmployee('all');
+    setSelectedPayment('all');
+    setShowCustom(false);
+    setActivePreset('Today');
+  };
 
   const handleVehicle = (val) => {
     const v = val.toUpperCase();
@@ -181,9 +273,16 @@ export default function BucketSales({ currentUser, customers = [], triggerToast 
     loadSales();
   };
 
-  const saleRows = () => sales.map((sale) => {
+  const exportName = () => {
+    const item = selectedItem !== 'all' ? `_${selectedItem}` : '';
+    const emp = selectedEmployee !== 'all' ? `_${selectedEmployee.replace(/\s+/g, '_')}` : '';
+    const pay = selectedPayment !== 'all' ? `_${selectedPayment.replace(/\s+/g, '_')}` : '';
+    return `bucket_sales${item}${emp}${pay}_${dateFrom || 'start'}_to_${dateTo || 'end'}`;
+  };
+
+  const saleRows = (includeTime) => filteredSales.map((sale) => {
     const dt = new Date(sale.created_at);
-    return [
+    const row = [
       dt.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }).replace(' ', '-'),
       dt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),
       sale.product_name || '',
@@ -199,22 +298,25 @@ export default function BucketSales({ currentUser, customers = [], triggerToast 
       sale.employee || '',
       sale.notes || '',
     ];
+    if (!includeTime) row.splice(1, 1);
+    return row;
   });
 
   const exportXLSX = () => {
-    if (sales.length === 0) return;
+    if (filteredSales.length === 0) return;
     try {
       const headers = ['Date', 'Time', 'Item', 'Litres', 'Qty', 'Rate', 'Total', 'Customer', 'Phone', 'Vehicle', 'Company', 'Payment', 'Employee', 'Notes'];
-      const rows = saleRows();
-      const wsData = [headers, ...rows];
+      const finalHeaders = includeTimeColumn ? headers : headers.filter((h) => h !== 'Time');
+      const rows = saleRows(includeTimeColumn);
+      const wsData = [finalHeaders, ...rows];
       const ws = XLSX.utils.aoa_to_sheet(wsData);
-      ws['!cols'] = headers.map((h, colIdx) => {
+      ws['!cols'] = finalHeaders.map((h, colIdx) => {
         const lengths = wsData.map((row) => String(row[colIdx] ?? '').length);
         return { wch: Math.min(Math.max(...lengths, h.length) + 2, 40) };
       });
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Bucket sales');
-      XLSX.writeFile(wb, `bucket_sales_${todayShift}.xlsx`);
+      XLSX.writeFile(wb, `${exportName()}.xlsx`);
     } catch (err) {
       console.error('XLSX export failed:', err);
       triggerToast('XLSX export failed. Please try again.', 'warn');
@@ -222,16 +324,17 @@ export default function BucketSales({ currentUser, customers = [], triggerToast 
   };
 
   const exportCSV = () => {
-    if (sales.length === 0) return;
+    if (filteredSales.length === 0) return;
     try {
       const headers = ['Date', 'Time', 'Item', 'Litres', 'Qty', 'Rate', 'Total', 'Customer', 'Phone', 'Vehicle', 'Company', 'Payment', 'Employee', 'Notes'];
-      const rows = saleRows();
-      const csv = '\uFEFF' + [headers.map((h) => `"${h}"`).join(','), ...rows.map((r) => r.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','))].join('\n');
+      const finalHeaders = includeTimeColumn ? headers : headers.filter((h) => h !== 'Time');
+      const rows = saleRows(includeTimeColumn);
+      const csv = '\uFEFF' + [finalHeaders.map((h) => `"${h}"`).join(','), ...rows.map((r) => r.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','))].join('\n');
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `bucket_sales_${todayShift}.csv`;
+      a.download = `${exportName()}.csv`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
@@ -251,10 +354,19 @@ export default function BucketSales({ currentUser, customers = [], triggerToast 
           </div>
         </div>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <label style={{ fontSize: '11px', color: 'var(--text-2)', display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
+            <input
+              type="checkbox"
+              checked={includeTimeColumn}
+              onChange={(e) => setIncludeTimeColumn(e.target.checked)}
+              style={{ width: 'auto' }}
+            />
+            Include Time
+          </label>
           <button
             className="btn btn-outline"
             onClick={exportXLSX}
-            disabled={sales.length === 0}
+            disabled={filteredSales.length === 0}
             style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
           >
             <Download size={15} />
@@ -263,7 +375,7 @@ export default function BucketSales({ currentUser, customers = [], triggerToast 
           <button
             className="btn btn-outline"
             onClick={exportCSV}
-            disabled={sales.length === 0}
+            disabled={filteredSales.length === 0}
             style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
           >
             <Download size={15} />
@@ -450,15 +562,135 @@ export default function BucketSales({ currentUser, customers = [], triggerToast 
         </form>
       </div>
 
-      <div className="card" style={{ marginTop: '14px', overflow: 'hidden' }}>
+      <div className="card" style={{ marginTop: '14px', marginBottom: '12px', padding: '14px 16px' }}>
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center', marginBottom: '10px' }}>
+          {presets.map((p) => (
+            <button
+              key={p.label}
+              onClick={() => handlePreset(p.range, p.label)}
+              className="btn btn-sm btn-outline"
+              style={activePreset === p.label ? { background: 'var(--green-soft)', color: 'var(--green)', borderColor: 'var(--green)' } : {}}
+            >
+              {p.label}
+            </button>
+          ))}
+          <button
+            onClick={() => setShowCustom((v) => !v)}
+            className={`btn btn-sm ${showCustom ? 'btn-primary' : 'btn-outline'}`}
+            title="Custom date range"
+          >
+            <Filter size={12} /> Custom
+          </button>
+          <span style={{ flex: 1 }} />
+          <span style={{ fontSize: '12px', color: 'var(--text-2)', fontWeight: '500' }}>
+            {dateFrom === dateTo ? fmtDay(dateFrom) : `${fmtDay(dateFrom)} – ${fmtDay(dateTo)}`}
+          </span>
+          <button onClick={() => navigateDay(-1)} className="btn btn-sm btn-outline" title="Previous day">
+            <ChevronLeft size={14} />
+          </button>
+          <button
+            onClick={() => navigateDay(1)}
+            className="btn btn-sm btn-outline"
+            title="Next day"
+            disabled={new Date(dateTo) >= new Date(todayShift)}
+          >
+            <ChevronRight size={14} />
+          </button>
+        </div>
+
+        {showCustom && (
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: '10px', paddingBottom: '10px', borderBottom: '1px solid var(--border)' }}>
+            <div className="fg" style={{ minWidth: '130px' }}>
+              <label style={lbl}><Calendar size={10} style={{ display: 'inline', marginRight: 3 }} />From</label>
+              <input type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setActivePreset(''); }} style={inp} />
+            </div>
+            <div className="fg" style={{ minWidth: '130px' }}>
+              <label style={lbl}>To</label>
+              <input type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setActivePreset(''); }} style={inp} />
+            </div>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          <div className="fg" style={{ minWidth: '160px' }}>
+            <label style={lbl}>Item</label>
+            <select value={selectedItem} onChange={(e) => setSelectedItem(e.target.value)} style={inp}>
+              <option value="all">All</option>
+              {BUCKETS.map((bucket) => (
+                <option key={bucket.id} value={bucket.id}>{bucket.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="fg" style={{ minWidth: '120px' }}>
+            <label style={lbl}>Employee</label>
+            <select value={selectedEmployee} onChange={(e) => setSelectedEmployee(e.target.value)} style={inp}>
+              <option value="all">All</option>
+              {employees.map((emp) => (
+                <option key={emp} value={emp}>{emp}</option>
+              ))}
+            </select>
+          </div>
+          <div className="fg" style={{ minWidth: '110px' }}>
+            <label style={lbl}>Payment</label>
+            <select value={selectedPayment} onChange={(e) => setSelectedPayment(e.target.value)} style={inp}>
+              <option value="all">All</option>
+              {payments.map((pay) => (
+                <option key={pay} value={pay}>{pay}</option>
+              ))}
+            </select>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', gap: '5px' }}>
+            <div style={{ fontSize: '11px', color: 'var(--text-3)', whiteSpace: 'nowrap' }}>
+              <span style={{ fontWeight: '600', color: 'var(--text)', fontSize: '14px' }}>{filteredSales.length}</span>
+              {' / '}{sales.length} sales
+            </div>
+            {hasFilters && (
+              <button
+                className="btn btn-outline btn-sm"
+                onClick={clearFilters}
+                style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', padding: '4px 10px', whiteSpace: 'nowrap' }}
+              >
+                <X size={11} /> Reset
+              </button>
+            )}
+          </div>
+        </div>
+
+        {hasFilters && (
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '10px', paddingTop: '10px', borderTop: '1px solid var(--border)' }}>
+            {!isDefaultRange && (
+              <Chip
+                label={dateFrom === dateTo ? fmtDay(dateFrom) : `${fmtDay(dateFrom)} – ${fmtDay(dateTo)}`}
+                onRemove={() => { setDateFrom(todayShift); setDateTo(todayShift); setActivePreset('Today'); }}
+              />
+            )}
+            {selectedItem !== 'all' && (
+              <Chip
+                label={BUCKETS.find((b) => b.id === selectedItem)?.name || selectedItem}
+                onRemove={() => setSelectedItem('all')}
+              />
+            )}
+            {selectedEmployee !== 'all' && (
+              <Chip label={`Employee: ${selectedEmployee}`} onRemove={() => setSelectedEmployee('all')} />
+            )}
+            {selectedPayment !== 'all' && (
+              <Chip label={selectedPayment} onRemove={() => setSelectedPayment('all')} />
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className="card" style={{ overflow: 'hidden' }}>
         <div className="card-pad" style={{ paddingBottom: '8px' }}>
           <div className="section-label">Bucket sales</div>
         </div>
         <div className="table-wrap">
           {loading ? (
             <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-3)' }}>Loading sales…</div>
-          ) : sales.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-3)' }}>No bucket sales yet.</div>
+          ) : filteredSales.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-3)' }}>
+              {sales.length === 0 ? 'No bucket sales yet.' : 'No sales match the selected filters.'}
+            </div>
           ) : (
             <table>
               <thead>
@@ -474,7 +706,7 @@ export default function BucketSales({ currentUser, customers = [], triggerToast 
                 </tr>
               </thead>
               <tbody>
-                {sales.map((sale) => (
+                {filteredSales.map((sale) => (
                   <tr key={sale.id}>
                     <td style={{ whiteSpace: 'nowrap', fontSize: '12px', color: 'var(--text-2)' }}>
                       {new Date(sale.created_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
@@ -496,3 +728,6 @@ export default function BucketSales({ currentUser, customers = [], triggerToast 
     </div>
   );
 }
+
+const lbl = { fontSize: '11px', fontWeight: '500', color: 'var(--text-2)', marginBottom: '4px', display: 'block' };
+const inp = { width: '100%', padding: '7px 10px', border: '1px solid var(--border-mid)', borderRadius: 'var(--radius)', fontSize: '12px', color: 'var(--text)', background: 'var(--surface)', outline: 'none' };
