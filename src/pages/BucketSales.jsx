@@ -240,17 +240,6 @@ export default function BucketSales({ currentUser, customers = [], triggerToast 
     }
   };
 
-  const handleDelete = async (sale) => {
-    if (!confirm(`Remove this sale of ${sale.qty} × ${sale.product_name}?`)) return;
-    const { error } = await dbAPI.deleteBucketSale(sale.id);
-    if (error) {
-      triggerToast('Could not remove that sale', 'warn');
-      return;
-    }
-    triggerToast('Sale removed');
-    loadSales();
-  };
-
   return (
     <div>
       <div className="page-header">
@@ -482,7 +471,6 @@ export default function BucketSales({ currentUser, customers = [], triggerToast 
                   <th>Customer</th>
                   <th>Vehicle</th>
                   <th>Payment</th>
-                  <th></th>
                 </tr>
               </thead>
               <tbody>
@@ -498,11 +486,6 @@ export default function BucketSales({ currentUser, customers = [], triggerToast 
                     <td>{sale.customer_name || '—'}</td>
                     <td className="mono" style={{ fontSize: '12px' }}>{sale.vehicle || '—'}</td>
                     <td>{sale.payment || '—'}</td>
-                    <td>
-                      <button type="button" className="btn btn-outline btn-sm" onClick={() => handleDelete(sale)}>
-                        Remove
-                      </button>
-                    </td>
                   </tr>
                 ))}
               </tbody>

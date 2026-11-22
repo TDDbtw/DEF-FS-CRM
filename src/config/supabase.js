@@ -206,12 +206,4 @@ export const dbAPI = {
       .select();
     return { data, error };
   },
-
-  deleteBucketSale: async (id) => {
-    const { data, error } = await supabase
-      .from('bucket_sales')
-      .delete()
-      .eq('id', id);
-    return { data, error };
-  },
 };
