@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Package, Search } from 'lucide-react';
+import { Package, Search, Download } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { dbAPI } from '../config/supabase';
 import { BUCKETS, inr } from '../config/buckets';
 import { getShiftDay, getTodayShiftDay } from '../config/shiftDay';
@@ -180,6 +181,65 @@ export default function BucketSales({ currentUser, customers = [], triggerToast 
     loadSales();
   };
 
+  const saleRows = () => sales.map((sale) => {
+    const dt = new Date(sale.created_at);
+    return [
+      dt.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }).replace(' ', '-'),
+      dt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),
+      sale.product_name || '',
+      sale.litres ?? '',
+      sale.qty ?? '',
+      sale.unit_price ?? '',
+      sale.total ?? '',
+      sale.customer_name || '',
+      sale.phone || '',
+      sale.vehicle || '',
+      sale.company || '',
+      sale.payment || '',
+      sale.employee || '',
+      sale.notes || '',
+    ];
+  });
+
+  const exportXLSX = () => {
+    if (sales.length === 0) return;
+    try {
+      const headers = ['Date', 'Time', 'Item', 'Litres', 'Qty', 'Rate', 'Total', 'Customer', 'Phone', 'Vehicle', 'Company', 'Payment', 'Employee', 'Notes'];
+      const rows = saleRows();
+      const wsData = [headers, ...rows];
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+      ws['!cols'] = headers.map((h, colIdx) => {
+        const lengths = wsData.map((row) => String(row[colIdx] ?? '').length);
+        return { wch: Math.min(Math.max(...lengths, h.length) + 2, 40) };
+      });
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Bucket sales');
+      XLSX.writeFile(wb, `bucket_sales_${todayShift}.xlsx`);
+    } catch (err) {
+      console.error('XLSX export failed:', err);
+      triggerToast('XLSX export failed. Please try again.', 'warn');
+    }
+  };
+
+  const exportCSV = () => {
+    if (sales.length === 0) return;
+    try {
+      const headers = ['Date', 'Time', 'Item', 'Litres', 'Qty', 'Rate', 'Total', 'Customer', 'Phone', 'Vehicle', 'Company', 'Payment', 'Employee', 'Notes'];
+      const rows = saleRows();
+      const csv = '\uFEFF' + [headers.map((h) => `"${h}"`).join(','), ...rows.map((r) => r.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','))].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `bucket_sales_${todayShift}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('CSV export failed:', err);
+      triggerToast('CSV export failed. Please try again.', 'warn');
+    }
+  };
+
   const handleDelete = async (sale) => {
     if (!confirm(`Remove this sale of ${sale.qty} × ${sale.product_name}?`)) return;
     const { error } = await dbAPI.deleteBucketSale(sale.id);
@@ -200,6 +260,26 @@ export default function BucketSales({ currentUser, customers = [], triggerToast 
             Prefilled buckets. Rates are the Nov 26 list
             {loading ? '' : ` · today ${todayQty} bucket${todayQty === 1 ? '' : 's'}, ${inr(todayAmount)}`}
           </div>
+        </div>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <button
+            className="btn btn-outline"
+            onClick={exportXLSX}
+            disabled={sales.length === 0}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <Download size={15} />
+            Export Excel
+          </button>
+          <button
+            className="btn btn-outline"
+            onClick={exportCSV}
+            disabled={sales.length === 0}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <Download size={15} />
+            Export CSV
+          </button>
         </div>
       </div>
 
