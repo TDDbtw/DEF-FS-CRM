@@ -3,8 +3,8 @@ import { Package, Search, Download, Calendar, X, ChevronLeft, ChevronRight, Filt
 import * as XLSX from 'xlsx';
 import { dbAPI } from '../config/supabase';
 import { BUCKETS, inr } from '../config/buckets';
-import { SHIFT_START } from '../config/constants';
-import { getShiftDay, getTodayShiftDay, fmtDate } from '../config/shiftDay';
+import { SHIFT_START, EMPLOYEE_INITIALS } from '../config/constants';
+import { getShiftDay, getTodayShiftDay, fmtDate, getShiftType } from '../config/shiftDay';
 
 const todayShift = getTodayShiftDay();
 
@@ -55,6 +55,7 @@ export default function BucketSales({ currentUser, customers = [], triggerToast 
   const [vehicle, setVehicle] = useState('');
   const [company, setCompany] = useState('');
   const [payment, setPayment] = useState('');
+  const [discount, setDiscount] = useState('0');
   const [notes, setNotes] = useState('');
 
   const [acOpen, setAcOpen] = useState(false);
@@ -116,7 +117,9 @@ export default function BucketSales({ currentUser, customers = [], triggerToast 
   const totalOnHand = BUCKETS.reduce((sum, bucket) => sum + onHand(bucket), 0);
   const selected = BUCKETS.find((bucket) => bucket.id === selectedId) || BUCKETS[0];
   const qtyNum = /^\d+$/.test(qty) ? parseInt(qty, 10) : 0;
-  const lineTotal = qtyNum > 0 ? qtyNum * selected.price : 0;
+  const grossTotal = qtyNum > 0 ? qtyNum * selected.price : 0;
+  const discVal = Math.max(0, parseFloat(discount) || 0);
+  const lineTotal = Math.max(0, grossTotal - discVal);
 
   const todaySales = sales.filter((sale) => getShiftDay(sale.created_at) === todayShift);
   const todayQty = todaySales.reduce((sum, sale) => sum + (Number(sale.qty) || 0), 0);
@@ -237,6 +240,10 @@ export default function BucketSales({ currentUser, customers = [], triggerToast 
       triggerToast('Select a payment method', 'warn');
       return;
     }
+    if (discVal > grossTotal) {
+      triggerToast('Discount cannot exceed the amount', 'warn');
+      return;
+    }
 
     setSaving(true);
     const { error } = await dbAPI.addBucketSale({
@@ -246,6 +253,7 @@ export default function BucketSales({ currentUser, customers = [], triggerToast 
       litres: selected.litres,
       qty: qtyNum,
       unit_price: selected.price,
+      discount: discVal,
       total: lineTotal,
       customer_name: customerName.trim(),
       phone: phone.trim() || null,
@@ -258,8 +266,9 @@ export default function BucketSales({ currentUser, customers = [], triggerToast 
 
     if (error) {
       const missing = error.code === 'PGRST205' || /bucket_sales/.test(error.message || '');
+      const missingDiscount = error.code === 'PGRST204' || /discount/.test(error.message || '');
       setTableMissing(missing);
-      triggerToast(missing ? 'Create the bucket_sales table, then save again' : 'Error saving sale: ' + error.message, 'warn');
+      triggerToast(missing ? 'Create the bucket_sales table, then save again' : missingDiscount ? 'Add the discount column in Supabase, then save again' : 'Error saving sale: ' + error.message, 'warn');
       return;
     }
 
@@ -270,6 +279,7 @@ export default function BucketSales({ currentUser, customers = [], triggerToast 
     setVehicle('');
     setCompany('');
     setPayment('');
+    setDiscount('0');
     setNotes('');
     loadSales();
   };
@@ -281,34 +291,60 @@ export default function BucketSales({ currentUser, customers = [], triggerToast 
     return `bucket_sales${item}${emp}${pay}_${dateFrom || 'start'}_to_${dateTo || 'end'}`;
   };
 
-  const saleRows = (includeTime) => filteredSales.map((sale) => {
-    const dt = new Date(sale.created_at);
-    const row = [
-      dt.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }).replace(' ', '-'),
-      dt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),
-      sale.product_name || '',
-      sale.litres ?? '',
-      sale.qty ?? '',
-      sale.unit_price ?? '',
-      sale.total ?? '',
-      sale.customer_name || '',
-      sale.phone || '',
-      sale.vehicle || '',
-      sale.company || '',
-      sale.payment || '',
-      sale.employee || '',
-      sale.notes || '',
-    ];
-    if (!includeTime) row.splice(1, 1);
-    return row;
-  });
+  const saleMoney = (sale) => {
+    const discountAmt = Number(sale.discount) || 0;
+    const amount = (Number(sale.qty) || 0) * (Number(sale.unit_price) || 0);
+    const gross = amount > 0 ? amount : (Number(sale.total) || 0) + discountAmt;
+    const collect = sale.discount == null ? (Number(sale.total) || 0) : Math.max(0, gross - discountAmt);
+    return { discountAmt, gross, collect };
+  };
 
   const exportXLSX = () => {
     if (filteredSales.length === 0) return;
     try {
-      const headers = ['Date', 'Time', 'Item', 'Litres', 'Qty', 'Rate', 'Total', 'Customer', 'Phone', 'Vehicle', 'Company', 'Payment', 'Employee', 'Notes'];
-      const finalHeaders = includeTimeColumn ? headers : headers.filter((h) => h !== 'Time');
-      const rows = saleRows(includeTimeColumn);
+      const headers = [
+        'Type', 'Driver', 'Truck No', 'Machine', 'Customer', 'Mob', 'Odometer',
+        'Date', 'Time', 'Litres', 'RATE', 'Amount', 'Final Collect', '       ',
+        'Payment', '       ', 'Employee', 'Bill', 'Discount', 'Split Cash',
+        'Split GPay', 'Shift', 'State', 'Company Phone', 'Totalizer Readings', 'Remarks'
+      ];
+      const rows = filteredSales.map((sale) => {
+        const dt = new Date(sale.created_at);
+        const dateStr = dt.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }).replace(' ', '-');
+        const timeStr = dt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+        const money = saleMoney(sale);
+        const row = [
+          'sale',
+          sale.customer_name || '',
+          sale.vehicle || '',
+          sale.product_name || '',
+          sale.company || '',
+          sale.phone || '',
+          '',
+          dateStr,
+          includeTimeColumn ? timeStr : '',
+          sale.qty ?? '',
+          sale.unit_price ?? '',
+          money.gross,
+          money.collect,
+          '',
+          sale.payment || '',
+          ' ',
+          EMPLOYEE_INITIALS[sale.employee?.toLowerCase()] || sale.employee || '',
+          '',
+          money.discountAmt,
+          '',
+          '',
+          getShiftType(sale.created_at),
+          '',
+          '',
+          '',
+          sale.notes || '',
+        ];
+        if (!includeTimeColumn) row.splice(8, 1);
+        return row;
+      });
+      const finalHeaders = includeTimeColumn ? headers : headers.slice(0, 8).concat(headers.slice(9));
       const wsData = [finalHeaders, ...rows];
       const ws = XLSX.utils.aoa_to_sheet(wsData);
       ws['!cols'] = finalHeaders.map((h, colIdx) => {
@@ -327,10 +363,37 @@ export default function BucketSales({ currentUser, customers = [], triggerToast 
   const exportCSV = () => {
     if (filteredSales.length === 0) return;
     try {
-      const headers = ['Date', 'Time', 'Item', 'Litres', 'Qty', 'Rate', 'Total', 'Customer', 'Phone', 'Vehicle', 'Company', 'Payment', 'Employee', 'Notes'];
-      const finalHeaders = includeTimeColumn ? headers : headers.filter((h) => h !== 'Time');
-      const rows = saleRows(includeTimeColumn);
-      const csv = '\uFEFF' + [finalHeaders.map((h) => `"${h}"`).join(','), ...rows.map((r) => r.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','))].join('\n');
+      const headers = ['Type', 'Driver', 'Truck No', 'Machine', 'Customer', 'Mob', 'Odometer', 'Date', 'Litres', 'RATE', 'Amount', 'Final Collect', 'Payment', 'Employee', 'Bill', 'Discount', 'Split Cash', 'Split GPay', 'Shift', 'State', 'Company Phone', 'Totalizer Readings', 'Remarks'];
+      const rows = filteredSales.map((sale) => {
+        const money = saleMoney(sale);
+        const dt = new Date(sale.created_at);
+        return [
+          'sale',
+          sale.customer_name || '',
+          sale.vehicle || '',
+          sale.product_name || '',
+          sale.company || '',
+          sale.phone || '',
+          '',
+          dt.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }).replace(' ', '-'),
+          sale.qty ?? '',
+          sale.unit_price ?? '',
+          money.gross,
+          money.collect,
+          sale.payment || '',
+          EMPLOYEE_INITIALS[sale.employee?.toLowerCase()] || sale.employee || '',
+          '',
+          money.discountAmt,
+          '',
+          '',
+          getShiftType(sale.created_at),
+          '',
+          '',
+          '',
+          sale.notes || '',
+        ];
+      });
+      const csv = '\uFEFF' + [headers.map((h) => `"${h}"`).join(','), ...rows.map((r) => r.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','))].join('\n');
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -453,9 +516,17 @@ export default function BucketSales({ currentUser, customers = [], triggerToast 
               <span className="sum-label">Selling rate</span>
               <span className="sum-val">{inr(selected.price)}</span>
             </div>
+            <div className="sum-row">
+              <span className="sum-label">Amount</span>
+              <span className="sum-val">{grossTotal > 0 ? inr(grossTotal) : '—'}</span>
+            </div>
+            <div className="sum-row">
+              <span className="sum-label">Discount</span>
+              <span className="sum-val">{discVal > 0 ? `−${inr(discVal)}` : '—'}</span>
+            </div>
             <div className="sum-row total">
               <span className="sum-label">Collect</span>
-              <span className="sum-val" style={{ color: 'var(--green)' }}>{lineTotal > 0 ? inr(lineTotal) : '—'}</span>
+              <span className="sum-val" style={{ color: 'var(--green)' }}>{grossTotal > 0 ? inr(lineTotal) : '—'}</span>
             </div>
           </div>
 
@@ -480,6 +551,29 @@ export default function BucketSales({ currentUser, customers = [], triggerToast 
                   <option value="GPay">GPay</option>
                   <option value="Credit">Credit</option>
                 </select>
+              </div>
+            </div>
+
+            <div className="fg">
+              <label>Discount ₹</label>
+              <div style={{ display: 'flex', gap: '6px' }}>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={discount}
+                  onChange={(e) => setDiscount(e.target.value)}
+                  placeholder="0"
+                  style={{ flex: 1 }}
+                />
+                <button
+                  type="button"
+                  className="btn btn-outline btn-sm"
+                  onClick={() => setDiscount('0')}
+                  style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
+                >
+                  Reset
+                </button>
               </div>
             </div>
 
@@ -706,6 +800,7 @@ export default function BucketSales({ currentUser, customers = [], triggerToast 
                   <th>Item</th>
                   <th style={{ textAlign: 'right' }}>Qty</th>
                   <th style={{ textAlign: 'right' }}>Rate</th>
+                  <th style={{ textAlign: 'right' }}>Discount</th>
                   <th style={{ textAlign: 'right' }}>Total</th>
                   <th>Customer</th>
                   <th>Vehicle</th>
@@ -721,6 +816,7 @@ export default function BucketSales({ currentUser, customers = [], triggerToast 
                     <td style={{ color: BUCKETS.find((b) => b.id === sale.product_id)?.color || 'var(--text)', fontWeight: 500 }}>{sale.product_name}</td>
                     <td className="mono" style={{ textAlign: 'right' }}>{sale.qty}</td>
                     <td className="mono" style={{ textAlign: 'right' }}>{inr(sale.unit_price)}</td>
+                    <td className="mono" style={{ textAlign: 'right' }}>{(Number(sale.discount) || 0) > 0 ? `−${inr(sale.discount)}` : '—'}</td>
                     <td className="mono" style={{ textAlign: 'right', fontWeight: 600 }}>{inr(sale.total)}</td>
                     <td>{sale.customer_name || '—'}</td>
                     <td className="mono" style={{ fontSize: '12px' }}>{sale.vehicle || '—'}</td>

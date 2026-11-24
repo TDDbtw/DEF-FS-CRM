@@ -10,6 +10,7 @@ create table if not exists public.bucket_sales (
   litres numeric,
   qty numeric not null,
   unit_price numeric not null,
+  discount numeric not null default 0,
   total numeric not null,
   customer_name text,
   phone text,
