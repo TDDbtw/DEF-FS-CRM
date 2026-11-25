@@ -55,6 +55,8 @@ export default function BucketSales({ currentUser, customers = [], triggerToast 
   const [vehicle, setVehicle] = useState('');
   const [company, setCompany] = useState('');
   const [payment, setPayment] = useState('');
+  const [splitCash, setSplitCash] = useState('');
+  const [splitGpay, setSplitGpay] = useState('');
   const [discount, setDiscount] = useState('0');
   const [notes, setNotes] = useState('');
 
@@ -126,7 +128,7 @@ export default function BucketSales({ currentUser, customers = [], triggerToast 
   const todayAmount = todaySales.reduce((sum, sale) => sum + (Number(sale.total) || 0), 0);
 
   const employees = [...new Set(sales.map((sale) => sale.employee).filter(Boolean))].sort();
-  const payments = [...new Set(['Cash', 'GPay', 'Credit', ...sales.map((sale) => sale.payment).filter(Boolean)])];
+  const payments = [...new Set(['Cash', 'GPay', 'Cash + GPay', 'GPay + Cash Discount', 'Credit', ...sales.map((sale) => sale.payment).filter(Boolean)])];
 
   const filteredSales = [...sales]
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
@@ -244,9 +246,24 @@ export default function BucketSales({ currentUser, customers = [], triggerToast 
       triggerToast('Discount cannot exceed the amount', 'warn');
       return;
     }
+    if (payment === 'Cash + GPay') {
+      const cashPart = parseFloat(splitCash) || 0;
+      const gpayPart = parseFloat(splitGpay) || 0;
+      if (Math.abs(cashPart + gpayPart - lineTotal) > 0.01) {
+        triggerToast('Cash + GPay amounts must equal the collect amount', 'warn');
+        return;
+      }
+    }
+    if (payment === 'GPay + Cash Discount') {
+      const cashBack = parseFloat(splitCash) || 0;
+      if (cashBack > grossTotal) {
+        triggerToast('Cash discount cannot exceed the amount', 'warn');
+        return;
+      }
+    }
 
     setSaving(true);
-    const { error } = await dbAPI.addBucketSale({
+    const sale = {
       employee: currentUser?.name || 'Unknown',
       product_id: selected.id,
       product_name: selected.name,
@@ -254,7 +271,14 @@ export default function BucketSales({ currentUser, customers = [], triggerToast 
       qty: qtyNum,
       unit_price: selected.price,
       discount: discVal,
-      total: lineTotal,
+      total: payment === 'GPay + Cash Discount' ? grossTotal : lineTotal,
+    };
+    if (payment === 'Cash + GPay' || payment === 'GPay + Cash Discount') {
+      sale.split_cash = parseFloat(splitCash) || 0;
+      sale.split_gpay = payment === 'Cash + GPay' ? (parseFloat(splitGpay) || 0) : grossTotal;
+    }
+    const { error } = await dbAPI.addBucketSale({
+      ...sale,
       customer_name: customerName.trim(),
       phone: phone.trim() || null,
       vehicle: vehicle.trim() || null,
@@ -266,9 +290,9 @@ export default function BucketSales({ currentUser, customers = [], triggerToast 
 
     if (error) {
       const missing = error.code === 'PGRST205' || /bucket_sales/.test(error.message || '');
-      const missingDiscount = error.code === 'PGRST204' || /discount/.test(error.message || '');
+      const missingDiscount = error.code === 'PGRST204' || /discount|split_cash|split_gpay/.test(error.message || '');
       setTableMissing(missing);
-      triggerToast(missing ? 'Create the bucket_sales table, then save again' : missingDiscount ? 'Add the discount column in Supabase, then save again' : 'Error saving sale: ' + error.message, 'warn');
+      triggerToast(missing ? 'Create the bucket_sales table, then save again' : missingDiscount ? 'Add the new bucket columns in Supabase, then save again' : 'Error saving sale: ' + error.message, 'warn');
       return;
     }
 
@@ -279,6 +303,8 @@ export default function BucketSales({ currentUser, customers = [], triggerToast 
     setVehicle('');
     setCompany('');
     setPayment('');
+    setSplitCash('');
+    setSplitGpay('');
     setDiscount('0');
     setNotes('');
     loadSales();
@@ -295,7 +321,9 @@ export default function BucketSales({ currentUser, customers = [], triggerToast 
     const discountAmt = Number(sale.discount) || 0;
     const amount = (Number(sale.qty) || 0) * (Number(sale.unit_price) || 0);
     const gross = amount > 0 ? amount : (Number(sale.total) || 0) + discountAmt;
-    const collect = sale.discount == null ? (Number(sale.total) || 0) : Math.max(0, gross - discountAmt);
+    const collect = sale.payment === 'GPay + Cash Discount'
+      ? gross
+      : (sale.discount == null ? (Number(sale.total) || 0) : Math.max(0, gross - discountAmt));
     return { discountAmt, gross, collect };
   };
 
@@ -327,14 +355,14 @@ export default function BucketSales({ currentUser, customers = [], triggerToast 
           sale.unit_price ?? '',
           money.gross,
           money.collect,
-          '',
-          sale.payment || '',
+          sale.payment === 'Cash + GPay' ? `${sale.split_cash || 0} + ${sale.split_gpay || 0}` : '',
+          sale.payment === 'Cash + GPay' ? 'C+GPAY' : (sale.payment || ''),
           ' ',
           EMPLOYEE_INITIALS[sale.employee?.toLowerCase()] || sale.employee || '',
           '',
           money.discountAmt,
-          '',
-          '',
+          sale.split_cash || '',
+          sale.split_gpay || '',
           getShiftType(sale.created_at),
           '',
           '',
@@ -384,8 +412,8 @@ export default function BucketSales({ currentUser, customers = [], triggerToast 
           EMPLOYEE_INITIALS[sale.employee?.toLowerCase()] || sale.employee || '',
           '',
           money.discountAmt,
-          '',
-          '',
+          sale.split_cash || '',
+          sale.split_gpay || '',
           getShiftType(sale.created_at),
           '',
           '',
@@ -545,14 +573,89 @@ export default function BucketSales({ currentUser, customers = [], triggerToast 
               </div>
               <div className="fg">
                 <label>Payment <span className="req">*</span></label>
-                <select value={payment} onChange={(e) => setPayment(e.target.value)}>
+                <select value={payment} onChange={(e) => {
+                  const next = e.target.value;
+                  setPayment(next);
+                  if (next === 'Cash + GPay') {
+                    const half = Math.round(lineTotal / 2 * 100) / 100;
+                    setSplitCash(half.toString());
+                    setSplitGpay((lineTotal - half).toString());
+                  } else if (next === 'GPay + Cash Discount') {
+                    setSplitGpay(String(grossTotal || 0));
+                    setSplitCash(discount || '0');
+                  } else {
+                    setSplitCash('');
+                    setSplitGpay('');
+                  }
+                }}>
                   <option value="">Select payment</option>
                   <option value="Cash">Cash</option>
                   <option value="GPay">GPay</option>
+                  <option value="Cash + GPay">Cash + GPay</option>
+                  <option value="GPay + Cash Discount">GPay + Cash Discount</option>
                   <option value="Credit">Credit</option>
                 </select>
               </div>
             </div>
+
+            {payment === 'Cash + GPay' && (
+              <div className="form-row">
+                <div className="fg">
+                  <label>Cash amount ₹</label>
+                  <input
+                    type="number"
+                    value={splitCash}
+                    onChange={(e) => {
+                      const cashPart = parseFloat(e.target.value) || 0;
+                      const remaining = Math.max(0, lineTotal - cashPart);
+                      setSplitCash(e.target.value);
+                      setSplitGpay(remaining > 0 ? remaining.toString() : '0');
+                    }}
+                    placeholder="0"
+                    step="0.01"
+                  />
+                </div>
+                <div className="fg">
+                  <label>GPay amount ₹</label>
+                  <input
+                    type="number"
+                    value={splitGpay}
+                    onChange={(e) => {
+                      const gpayPart = parseFloat(e.target.value) || 0;
+                      const remaining = Math.max(0, lineTotal - gpayPart);
+                      setSplitGpay(e.target.value);
+                      setSplitCash(remaining > 0 ? remaining.toString() : '0');
+                    }}
+                    placeholder="0"
+                    step="0.01"
+                  />
+                </div>
+              </div>
+            )}
+
+            {payment === 'GPay + Cash Discount' && (
+              <div className="form-row">
+                <div className="fg">
+                  <label>GPay received (full) ₹</label>
+                  <input
+                    type="number"
+                    value={grossTotal || 0}
+                    disabled
+                    style={{ background: 'var(--bg)', color: 'var(--text-2)', cursor: 'not-allowed' }}
+                  />
+                </div>
+                <div className="fg">
+                  <label>Cash discount given ₹</label>
+                  <input
+                    type="number"
+                    value={splitCash}
+                    onChange={(e) => setSplitCash(e.target.value)}
+                    placeholder="0"
+                    step="0.01"
+                  />
+                </div>
+              </div>
+            )}
 
             <div className="fg">
               <label>Discount ₹</label>

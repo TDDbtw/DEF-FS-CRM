@@ -17,6 +17,8 @@ create table if not exists public.bucket_sales (
   vehicle text,
   company text,
   payment text,
+  split_cash numeric,
+  split_gpay numeric,
   notes text
 );
 
