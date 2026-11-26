@@ -345,7 +345,7 @@ export default function BucketSales({ currentUser, customers = [], triggerToast 
           'sale',
           sale.customer_name || '',
           sale.vehicle || '',
-          sale.product_name || '',
+          BUCKETS.find((b) => b.id === sale.product_id)?.code || sale.product_name || '',
           sale.company || '',
           sale.phone || '',
           '',
