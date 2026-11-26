@@ -116,6 +116,7 @@ export default function BucketSales({ currentUser, customers = [], triggerToast 
   }, {});
 
   const onHand = (bucket) => bucket.openingQty - (soldById[bucket.id] || 0);
+  const totalOpening = BUCKETS.reduce((sum, bucket) => sum + bucket.openingQty, 0);
   const totalOnHand = BUCKETS.reduce((sum, bucket) => sum + onHand(bucket), 0);
   const selected = BUCKETS.find((bucket) => bucket.id === selectedId) || BUCKETS[0];
   const qtyNum = /^\d+$/.test(qty) ? parseInt(qty, 10) : 0;
@@ -502,7 +503,8 @@ export default function BucketSales({ currentUser, customers = [], triggerToast 
                 <tr>
                   <th>SN</th>
                   <th>Item</th>
-                  <th style={{ textAlign: 'right' }}>Qty</th>
+                  <th style={{ textAlign: 'right' }}>Total</th>
+                  <th style={{ textAlign: 'right' }}>Left</th>
                   <th style={{ textAlign: 'right' }}>Selling rate</th>
                 </tr>
               </thead>
@@ -515,6 +517,7 @@ export default function BucketSales({ currentUser, customers = [], triggerToast 
                     <tr key={bucket.id} onClick={() => setSelectedId(bucket.id)} style={{ cursor: 'pointer' }}>
                       <td className="mono" style={{ ...hi, boxShadow: `inset 3px 0 0 ${bucket.color}` }}>{bucket.sn}</td>
                       <td style={{ ...hi, fontWeight: active ? 600 : 500, color: bucket.color }}>{bucket.name}</td>
+                      <td className="mono" style={{ ...hi, textAlign: 'right' }}>{bucket.openingQty}</td>
                       <td className="mono" style={{ ...hi, textAlign: 'right', color: left <= 0 ? 'var(--danger)' : 'var(--text)' }}>{left}</td>
                       <td className="mono" style={{ ...hi, textAlign: 'right', fontWeight: 600, color: bucket.color }}>{inr(bucket.price)}</td>
                     </tr>
@@ -523,6 +526,7 @@ export default function BucketSales({ currentUser, customers = [], triggerToast 
                 <tr>
                   <td></td>
                   <td style={{ fontWeight: 700 }}>TOTAL</td>
+                  <td className="mono" style={{ textAlign: 'right', fontWeight: 700 }}>{totalOpening}</td>
                   <td className="mono" style={{ textAlign: 'right', fontWeight: 700 }}>{totalOnHand}</td>
                   <td className="mono" style={{ textAlign: 'right', color: 'var(--text-3)', fontSize: '12px' }}>Nov 26</td>
                 </tr>
