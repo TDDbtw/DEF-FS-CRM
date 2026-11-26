@@ -137,9 +137,11 @@ export default function App() {
       });
     };
     loadTimes();
+    const timer = setInterval(loadTimes, 30000);
     window.addEventListener('focus', loadTimes);
     return () => {
       cancelled = true;
+      clearInterval(timer);
       window.removeEventListener('focus', loadTimes);
     };
   }, [currentUser, activePage]);
@@ -157,9 +159,11 @@ export default function App() {
   };
 
   const todayShift = getTodayShiftDay();
-  const bucketBadge = activePage === 'buckets' ? 0 : bucketTimes.filter((sale) => (
+  const unseenBucketSales = activePage === 'buckets' ? [] : bucketTimes.filter((sale) => (
     getShiftDay(sale.created_at) === todayShift && new Date(sale.created_at).getTime() > bucketsSeenAt
-  )).length;
+  ));
+  const bucketBadge = unseenBucketSales.length;
+  const bucketAmount = unseenBucketSales.reduce((sum, sale) => sum + (Number(sale.total) || 0), 0);
 
   const triggerToast = (msg, type = 'ok') => {
     setToastMsg(msg);
@@ -303,6 +307,7 @@ export default function App() {
         onLogout={handleLogout}
         alertCount={getAlertsCount()}
         bucketCount={bucketBadge}
+        bucketAmount={bucketAmount}
       >
         {renderPage()}
       </Layout>

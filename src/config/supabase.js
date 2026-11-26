@@ -202,7 +202,7 @@ export const dbAPI = {
   fetchBucketSaleTimes: async () => {
     const { data, error } = await supabase
       .from('bucket_sales')
-      .select('created_at')
+      .select('created_at,total')
       .order('created_at', { ascending: false })
       .limit(500);
     return { data, error };

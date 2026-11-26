@@ -12,6 +12,7 @@ export default function Layout({
   onLogout,
   alertCount,
   bucketCount = 0,
+  bucketAmount = 0,
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -68,6 +69,9 @@ export default function Layout({
           style={styles.menuButton}
         >
           {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+          {bucketCount > 0 && !mobileMenuOpen && (
+            <span style={styles.menuBadge}>{bucketCount}</span>
+          )}
         </button>
       </header>
 
@@ -128,6 +132,23 @@ export default function Layout({
 
       {/* Main Content Area */}
       <main className="main" style={styles.main}>
+        {bucketCount > 0 && (
+          <div className="bucket-notice">
+            <Package size={18} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 600 }}>
+                {bucketCount === 1 ? '1 new bucket sale' : `${bucketCount} new bucket sales`}
+              </div>
+              <div style={{ fontSize: '12px', color: 'var(--text-2)' }}>
+                {bucketAmount > 0 ? `₹${bucketAmount.toLocaleString('en-IN')} collected · ` : ''}
+                Open DEF Buckets to clear this
+              </div>
+            </div>
+            <button type="button" className="btn btn-primary btn-sm" onClick={() => handleNavClick('buckets')}>
+              View
+            </button>
+          </div>
+        )}
         {children}
       </main>
     </div>
@@ -156,11 +177,25 @@ const styles = {
     color: 'var(--green)',
   },
   menuButton: {
+    position: 'relative',
     background: 'none',
     border: 'none',
     color: 'var(--text-2)',
     cursor: 'pointer',
     padding: '4px',
+  },
+  menuBadge: {
+    position: 'absolute',
+    top: '-4px',
+    right: '-6px',
+    background: 'var(--hp)',
+    color: '#fff',
+    borderRadius: '20px',
+    fontSize: '10px',
+    lineHeight: '14px',
+    minWidth: '14px',
+    padding: '0 4px',
+    fontWeight: '700',
   },
   sidebar: {
     zIndex: 160,
